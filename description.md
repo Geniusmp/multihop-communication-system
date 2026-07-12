@@ -15,7 +15,7 @@ Below is the directory structure of the QuantumHop project, detailing the respon
 ```text
 multihop/
 ├── .gitignore               # Configures files ignored by Git (venv, node_modules, logs, etc.)
-├── ELPPT.pptx               # Presentation slide deck detailing the project's background and engineering
+├── ELPPT.pptx               # Pr1esentation slide deck detailing the project's background and engineering
 ├── requirements.txt         # Global Python dependencies (Flask, Cryptography, PyTest, etc.)
 ├── run.bat                  # Orchestrator script to clean ports, install packages, and launch both servers
 ├── backend/                 # Python Flask & Raw TCP Socket backend
