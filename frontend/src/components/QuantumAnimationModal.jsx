@@ -794,11 +794,11 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "10px", opacity: 0.95 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
                   <span style={{ color: "#aaa" }}>Envelope Tag:</span>
-                  <code style={{ color: "#ef4444" }}>{event?.tagPreview ? event.tagPreview.slice(0, 12) + "..." : "none"}</code>
+                  <code style={{ color: "#e2e8f0" }}>{event?.tagPreview ? event.tagPreview.slice(0, 12) + "..." : "none"}</code>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
                   <span style={{ color: "#aaa" }}>Recalculated:</span>
-                  <code style={{ color: "#3b82f6" }}>
+                  <code style={{ color: "#ef4444" }}>
                     {event?.recalculatedTag 
                       ? event.recalculatedTag.slice(0, 12) + "..." 
                       : (event?.tagPreview && event.tagPreview.length >= 8 
