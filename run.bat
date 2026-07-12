@@ -78,6 +78,10 @@ timeout /t 2 /nobreak >nul
 echo [2/2] Starting Frontend (Vite) on http://localhost:5173 ...
 start "QuantumHop - Frontend" cmd /k "cd /d "%FRONTEND_DIR%" && npm run dev"
 
+:: Wait for Vite development server to launch, then open browser
+timeout /t 3 /nobreak >nul
+start http://localhost:5173
+
 echo.
 echo ============================================
 echo  Both servers are starting in new windows!
