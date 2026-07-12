@@ -131,15 +131,28 @@ function SendExplanation({ sendResult }) {
   );
 }
 
+function getOutgoingPreviews(step) {
+  if (!step || !step.crypto) return { iv: "", ciphertext: "", tag: "" };
+  const crypto = step.crypto;
+  const payload = crypto.payload || {};
+  return {
+    iv: payload.iv || crypto.ivPreview || "",
+    ciphertext: payload.ciphertext || crypto.ciphertextPreview || "",
+    tag: payload.tag || crypto.tagPreview || "",
+  };
+}
+
 function mapRouteStepsToEvents(routeSteps, attackMode, targetNode, originalMessage) {
   if (!routeSteps || routeSteps.length === 0) return [];
   const events = [];
   const now = new Date().toISOString();
 
-  routeSteps.forEach((step) => {
+  routeSteps.forEach((step, idx) => {
     const nodeName = step.node;
     const crypto = step.crypto || {};
     const bb84 = crypto.bb84 || {};
+    const prevStep = idx > 0 ? routeSteps[idx - 1] : null;
+    const prevPreviews = getOutgoingPreviews(prevStep);
 
     let source = "sender";
     if (nodeName.includes("Hop 1")) source = "node1";
@@ -235,9 +248,9 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode, originalMessa
           status: "info",
           phase: "aes-decrypt",
           plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : (originalMessage ? originalMessage.length : 0),
-          ivPreview: crypto.ivPreview,
-          ciphertextPreview: crypto.ciphertextPreview,
-          tagPreview: crypto.tagPreview,
+          ivPreview: prevPreviews.iv || crypto.ivPreview,
+          ciphertextPreview: prevPreviews.ciphertext || crypto.ciphertextPreview,
+          tagPreview: prevPreviews.tag || crypto.tagPreview,
           keyFingerprint: crypto.aesKeyFingerprint,
           previousHop: hopNum === "1" ? "sender" : `node${parseInt(hopNum) - 1}`,
           nextHop: hopNum === "3" ? "receiver" : `node${parseInt(hopNum) + 1}`,
@@ -362,9 +375,9 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode, originalMessa
           phase: "aes-decrypt",
           plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : (originalMessage ? originalMessage.length : 0),
           decryptedPreview: crypto.decryptedPreview || originalMessage,
-          ivPreview: crypto.payload ? crypto.payload.iv : (crypto.ivPreview || ""),
-          ciphertextPreview: crypto.payload ? crypto.payload.ciphertext : (crypto.ciphertextPreview || ""),
-          tagPreview: crypto.payload ? crypto.payload.tag : (crypto.tagPreview || ""),
+          ivPreview: prevPreviews.iv || (crypto.payload ? crypto.payload.iv : (crypto.ivPreview || "")),
+          ciphertextPreview: prevPreviews.ciphertext || (crypto.payload ? crypto.payload.ciphertext : (crypto.ciphertextPreview || "")),
+          tagPreview: prevPreviews.tag || (crypto.payload ? crypto.payload.tag : (crypto.tagPreview || "")),
           keyFingerprint: crypto.aesKeyFingerprint,
         });
 
