@@ -3,3 +3,4 @@ flask-cors>=4.0
 cryptography>=42.0
 requests>=2.31
 pytest>=8.0
+gunicorn

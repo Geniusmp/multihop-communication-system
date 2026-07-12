@@ -141,8 +141,9 @@ def frontend(path):
 
 # ─── Startup ──────────────────────────────────────────────────────────────────
 
+peer_discovery.start_discovery()
+peer_socket.start_peer_server()
+
 if __name__ == "__main__":
-    peer_discovery.start_discovery()
-    peer_socket.start_peer_server()
     print(f"[QH] QuantumHop | IP={config.LOCAL_IP} | Flask={config.API_PORT} | Socket={config.PEER_SOCKET_PORT}")
     app.run(host=config.HOST, port=config.API_PORT, debug=False, use_reloader=False)
