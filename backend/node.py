@@ -185,6 +185,7 @@ def process_packet(node_name: str, packet: dict[str, object]) -> dict[str, objec
         "info",
         phase="aes-encrypt",
         plaintextLength=len(plaintext),
+        decryptedPreview=plaintext[:24],
         ivPreview=next_payload["iv"][:12],
         ciphertextPreview=next_payload["ciphertext"][:16],
         tagPreview=next_payload.get("tag", "")[:16],

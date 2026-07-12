@@ -47,6 +47,7 @@ def build_initial_packet(message: str) -> dict[str, object]:
         "info",
         phase="aes-encrypt",
         plaintextLength=len(message),
+        decryptedPreview=message[:24],
         ivPreview=payload["iv"][:12],
         ciphertextPreview=payload["ciphertext"][:16],
         keyFingerprint=_key_fingerprint(key_result.key),

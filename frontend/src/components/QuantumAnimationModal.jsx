@@ -113,7 +113,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         id: "qkd_polarization",
         title: "2. QKD Basis Exchange",
         desc: "Alice (Sender) encodes random bits onto photons with random polarizations and Bob (Node 1) measures them.",
-        render: () => <QKDExchangeVisualizer event={qkdEvent} eavesdrop={false} />
+        render: (isPlaying) => <QKDExchangeVisualizer event={qkdEvent} eavesdrop={false} isPlaying={isPlaying} />
       });
 
       list.push({
@@ -293,7 +293,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
           desc: isEavesdropHere 
             ? "Eve eavesdrops on the fiber optic link, measuring photons in her own random bases. This disturbs their state."
             : "QKD is initiated to exchange a fresh key for the next link. Qubits are transmitted and measured.",
-          render: () => <QKDExchangeVisualizer event={qkdEvent} eavesdrop={isEavesdropHere} />
+          render: (isPlaying) => <QKDExchangeVisualizer event={qkdEvent} eavesdrop={isEavesdropHere} isPlaying={isPlaying} />
         });
 
         list.push({
@@ -449,8 +449,8 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
                 <p>{currentStep?.desc}</p>
               </div>
 
-              <div className="anim-viewport">
-                {currentStep?.render()}
+              <div className={`anim-viewport ${!isPlaying ? "paused" : ""}`}>
+                {currentStep?.render(isPlaying)}
               </div>
 
               {/* Player Controls */}
@@ -494,7 +494,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
 }
 
 // ─── QKD Exchange Visualizer (SVG/CSS Animations) ──────────────────────────
-function QKDExchangeVisualizer({ event, eavesdrop }) {
+function QKDExchangeVisualizer({ event, eavesdrop, isPlaying }) {
   const aliceBits = String(event?.aliceBitPreview || "01101010").split("").slice(0, 8);
   const aliceBases = String(event?.aliceBasisPreview || "++x+x+xx").split("").slice(0, 8);
   const bobBases = String(event?.bobBasisPreview || "+x++xxx+").split("").slice(0, 8);
@@ -503,11 +503,12 @@ function QKDExchangeVisualizer({ event, eavesdrop }) {
   const [photonIndex, setPhotonIndex] = useState(0);
 
   useEffect(() => {
+    if (!isPlaying) return;
     const timer = setInterval(() => {
       setPhotonIndex((prev) => (prev + 1) % aliceBits.length);
     }, 1500);
     return () => clearInterval(timer);
-  }, [aliceBits.length]);
+  }, [aliceBits.length, isPlaying]);
 
   return (
     <div className="anim-qkd-board">
@@ -581,8 +582,24 @@ function QKDSiftingVisualizer({ event, eavesdrop }) {
     <div className="anim-sifting-board">
       <div className="sifting-table">
         <div className="sifting-row header">
-          <span>Index</span>
+          <span>Row/Index</span>
           {aliceBases.map((_, i) => <span key={i}>{i+1}</span>)}
+        </div>
+        <div className="sifting-row">
+          <span>Alice Bit</span>
+          {aliceBits.map((b, i) => <span key={i} className="basis-val">{b}</span>)}
+        </div>
+        <div className="sifting-row">
+          <span>Bob Bit</span>
+          {bobBits.map((b, i) => {
+            const isMatchBasis = keep[i] === "Y";
+            const isBitMismatch = aliceBits[i] !== b;
+            return (
+              <span key={i} className={`basis-val ${isMatchBasis && isBitMismatch ? "font-red font-bold warning-pulse-text" : ""}`}>
+                {b}
+              </span>
+            );
+          })}
         </div>
         <div className="sifting-row">
           <span>Alice Basis</span>
@@ -593,7 +610,7 @@ function QKDSiftingVisualizer({ event, eavesdrop }) {
           {bobBases.map((b, i) => <span key={i} className="basis-val">{b}</span>)}
         </div>
         <div className="sifting-row verdict">
-          <span>Match?</span>
+          <span>Bases Match?</span>
           {keep.map((k, i) => (
             <span key={i} className={k === "Y" ? "match-yes font-green" : "match-no font-red"}>
               {k === "Y" ? "✅" : "❌"}
@@ -601,30 +618,62 @@ function QKDSiftingVisualizer({ event, eavesdrop }) {
           ))}
         </div>
         <div className="sifting-row key-bits">
-          <span>Sifted Key</span>
-          {keep.map((k, i) => (
-            <span key={i} className={k === "Y" ? "sifted-bit highlighted" : "sifted-bit dropped"}>
-              {k === "Y" ? bobBits[i] : "-"}
-            </span>
-          ))}
+          <span>Sifted Key Bit</span>
+          {keep.map((k, i) => {
+            if (k !== "Y") return <span key={i} className="sifted-bit dropped">-</span>;
+            const isBitMatch = aliceBits[i] === bobBits[i];
+            return (
+              <span key={i} className={`sifted-bit highlighted ${isBitMatch ? "font-green" : "font-red warning-pulse-text"}`}>
+                {isBitMatch ? `${bobBits[i]}` : `⚠️ ${bobBits[i]}`}
+              </span>
+            );
+          })}
         </div>
       </div>
 
-      <div className="key-derivation-flow">
-        <div className="blender-graphic">
-          <RotateCcw size={28} className="spin-slow" />
-          <span>SHA-256 Key Derivation Function</span>
+      {eavesdrop ? (
+        <div className="qber-card-info">
+          <h4>📊 Quantum Bit Error Rate (QBER) Diagnostic Analysis</h4>
+          <div className="qber-stats">
+            <div className="qber-stat-card">
+              <small>Matching Bases</small>
+              <strong>{event?.matchingBases || "8"}</strong>
+            </div>
+            <div className="qber-stat-card warning">
+              <small>Bit Mismatches</small>
+              <strong className="red">
+                {Math.max(1, Math.round((event?.errorRate || 0.25) * (event?.matchingBases || 8)))}
+              </strong>
+            </div>
+            <div className="qber-stat-card warning">
+              <small>Calculated QBER</small>
+              <strong className="red">{Math.round((event?.errorRate || 0.25) * 100)}%</strong>
+            </div>
+            <div className="qber-stat-card">
+              <small>Max Limit</small>
+              <strong>{Math.round((event?.errorThreshold || 0.15) * 100)}%</strong>
+            </div>
+          </div>
+          <p className="warning-note red">
+            <strong>EAVESDROPPING CAUGHT:</strong> Note that index columns containing ⚠️ show positions where Alice and Bob used the same basis but got different bits! Because Eve measured the qubits using her own random bases, she collapsed their states and introduced a ~25% disturbance. Alice and Bob check for this, detect a QBER exceeding the 15% threshold, and reject the key!
+          </p>
         </div>
-        <div className="arrow-down">↓</div>
-        <div className="derived-aes-key">
-          <Lock size={14} />
-          <span>Derived AES Key Fingerprint: <strong>{event?.keyFingerprint || "3a7f8b9c"}</strong></span>
+      ) : (
+        <div className="key-derivation-flow">
+          <div className="blender-graphic">
+            <RotateCcw size={28} className="spin-slow" />
+            <span>SHA-256 Key Derivation Function</span>
+          </div>
+          <div className="arrow-down">↓</div>
+          <div className="derived-aes-key">
+            <Lock size={14} />
+            <span>Derived AES Key Fingerprint: <strong>{event?.keyFingerprint || "3a7f8b9c"}</strong></span>
+          </div>
         </div>
-      </div>
+      )}
 
       <p className="caption">
-        Alice and Bob announce bases publicly (classical sifting). Disagreeing bases are discarded.
-        {eavesdrop && <span className="warning-text font-red"> Note: Eavesdropping introduces a QBER above the 15% threshold, causing Bob and Alice to reject the derived key.</span>}
+        Alice and Bob announce bases publicly over a classical link. Columns where bases disagree are discarded.
       </p>
     </div>
   );
@@ -638,7 +687,7 @@ function AESEncryptVisualizer({ event }) {
         <div className="input-block">
           <span>Plaintext</span>
           <div className="block-val text">
-            {event?.plaintextLength ? `Length: ${event.plaintextLength} chars` : "Plaintext Message"}
+            {event?.decryptedPreview || (event?.plaintextLength ? `Length: ${event.plaintextLength} chars` : "Awaiting Plaintext...")}
           </div>
         </div>
 
@@ -647,7 +696,7 @@ function AESEncryptVisualizer({ event }) {
         <div className="key-block">
           <span>AES-256 Key</span>
           <div className="block-val key">
-            <code>Fingerprint: {event?.keyFingerprint || "3a7f8b9c"}</code>
+            <code>Fingerprint: {event?.keyFingerprint || "Awaiting Key..."}</code>
           </div>
         </div>
 
@@ -666,15 +715,15 @@ function AESEncryptVisualizer({ event }) {
           <div className="envelope-contents">
             <div>
               <small>IV (Init Vector)</small>
-              <code>{event?.ivPreview || "b28cf"}...</code>
+              <code>{event?.ivPreview ? `${event.ivPreview}...` : "Generating IV..."}</code>
             </div>
             <div>
               <small>Ciphertext</small>
-              <code>{event?.ciphertextPreview || "e59ac"}...</code>
+              <code>{event?.ciphertextPreview ? `${event.ciphertextPreview}...` : "Encrypting..."}</code>
             </div>
             <div>
               <small>HMAC Tag</small>
-              <code>{event?.tagPreview || "8a1e2"}...</code>
+              <code>{event?.tagPreview ? `${event.tagPreview}...` : "Signing..."}</code>
             </div>
           </div>
         </div>
@@ -694,15 +743,15 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
           <div className="envelope-contents">
             <div>
               <small>IV (Init Vector)</small>
-              <code>{event?.ivPreview || "b28cf"}...</code>
+              <code>{event?.ivPreview ? `${event.ivPreview}...` : "Awaiting IV..."}</code>
             </div>
             <div>
               <small>Ciphertext</small>
-              <code>{event?.ciphertextPreview || "e59ac"}...</code>
+              <code>{event?.ciphertextPreview ? `${event.ciphertextPreview}...` : "Awaiting Ciphertext..."}</code>
             </div>
             <div>
               <small>HMAC Tag</small>
-              <code>{event?.tagPreview || "8a1e2"}...</code>
+              <code>{event?.tagPreview ? `${event.tagPreview}...` : "Awaiting HMAC..."}</code>
             </div>
           </div>
         </div>
@@ -721,7 +770,7 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
           <div className="input-block success">
             <span>Decrypted Plaintext</span>
             <div className="block-val text green">
-              <code>{event?.decryptedPreview || "Message Content"}</code>
+              <code>{event?.decryptedPreview || "Decrypting..."}</code>
             </div>
           </div>
         ) : (

@@ -17,6 +17,7 @@ def receive_packet(packet: dict[str, object]) -> str:
         "info",
         phase="aes-decrypt",
         plaintextLength=len(plaintext),
+        decryptedPreview=plaintext[:24],
         ivPreview=packet["payload"]["iv"][:12],
         ciphertextPreview=packet["payload"]["ciphertext"][:16],
         keyFingerprint=str(packet["key"])[:12],
