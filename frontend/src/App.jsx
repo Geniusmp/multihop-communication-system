@@ -238,6 +238,7 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode, originalMessa
           ivPreview: crypto.ivPreview,
           ciphertextPreview: crypto.ciphertextPreview,
           tagPreview: crypto.tagPreview,
+          recalculatedTag: crypto.recalculatedTag,
           keyFingerprint: crypto.aesKeyFingerprint,
         });
       } else {
@@ -354,6 +355,7 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode, originalMessa
           ivPreview: crypto.payload ? crypto.payload.iv : (crypto.ivPreview || ""),
           ciphertextPreview: crypto.payload ? crypto.payload.ciphertext : (crypto.ciphertextPreview || ""),
           tagPreview: crypto.payload ? crypto.payload.tag : (crypto.tagPreview || ""),
+          recalculatedTag: crypto.recalculatedTag,
           keyFingerprint: crypto.aesKeyFingerprint,
           detectionEvidence: isEavesdrop ? [
             "Packet arrived at Receiver from Hop 3.",

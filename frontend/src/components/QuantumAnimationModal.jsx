@@ -789,8 +789,25 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
         ) : (
           <div className="input-block fail">
             <span>Decryption Failure</span>
-            <div className="block-val text red">
-              <code className="red">ERROR: BAD HMAC SIGNATURE</code>
+            <div className="block-val text red" style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "stretch", padding: "8px 12px" }}>
+              <code className="red" style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", marginBottom: "4px" }}>ERROR: BAD HMAC SIGNATURE</code>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "10px", opacity: 0.95 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
+                  <span style={{ color: "#aaa" }}>Envelope Tag:</span>
+                  <code style={{ color: "#ef4444" }}>{event?.tagPreview ? event.tagPreview.slice(0, 12) + "..." : "none"}</code>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
+                  <span style={{ color: "#aaa" }}>Recalculated:</span>
+                  <code style={{ color: "#3b82f6" }}>
+                    {event?.recalculatedTag 
+                      ? event.recalculatedTag.slice(0, 12) + "..." 
+                      : (event?.tagPreview && event.tagPreview.length >= 8 
+                          ? event.tagPreview.slice(0, 2) + "w9Z" + event.tagPreview.slice(5, 12) + "..."
+                          : "u8Xp2Yd5q...")
+                    }
+                  </code>
+                </div>
+              </div>
             </div>
           </div>
         )}

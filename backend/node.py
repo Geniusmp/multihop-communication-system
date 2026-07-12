@@ -117,6 +117,17 @@ def process_packet(node_name: str, packet: dict[str, object]) -> dict[str, objec
         plaintext = crypto_utils.decrypt_message(working_payload, packet["key"])
     except Exception as exc:
         router.block_node(node_name)
+        expected_tag_hex = ""
+        try:
+            derived_key = crypto_utils.derive_aes_key(packet["key"])
+            import hmac, hashlib, base64
+            iv = base64.b64decode(working_payload["iv"])
+            ciphertext = base64.b64decode(working_payload["ciphertext"])
+            expected_tag = hmac.new(derived_key, iv + ciphertext, hashlib.sha256).digest()
+            expected_tag_hex = base64.b64encode(expected_tag).decode("ascii")
+        except Exception:
+            pass
+
         attack_detector.store_intercepted({
             "node": node_name,
             "ciphertextPreview": working_payload.get("ciphertext", "")[:32],
@@ -154,6 +165,7 @@ def process_packet(node_name: str, packet: dict[str, object]) -> dict[str, objec
             ivPreview=working_payload.get("iv", "")[:12],
             ciphertextPreview=working_payload.get("ciphertext", "")[:16],
             tagPreview=working_payload.get("tag", "")[:16],
+            recalculatedTag=expected_tag_hex[:24] if expected_tag_hex else "",
             keyFingerprint=_key_fingerprint(packet["key"]),
         )
         return None

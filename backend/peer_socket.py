@@ -205,6 +205,7 @@ def _crypto_details(
     plaintext: str = "",
     decrypted: bool = False,
     blocked_reason: str = "",
+    recalculated_tag: str = "",
 ) -> dict:
     payload = packet.get("payload", {})
     sender_bb84 = packet.get("routeMeta", {}).get("senderBb84", {})
@@ -224,6 +225,7 @@ def _crypto_details(
         "senderBB84": sender_bb84,
         "receiverBB84": receiver_bb84,
         "nodeRouteSteps": packet.get("routeMeta", {}).get("nodeRouteSteps", []),
+        "recalculatedTag": recalculated_tag[:24] if recalculated_tag else "",
     }
 
 
@@ -236,6 +238,7 @@ def _packet_crypto(
     bb84_result: bb84.BB84Result,
     decrypted_plaintext: str = "",
     note: str = "",
+    recalculated_tag: str = "",
 ) -> dict:
     return {
         "action": action,
@@ -248,6 +251,7 @@ def _packet_crypto(
         "tagPreview": str(payload.get("tag", ""))[:24],
         "bb84": _bb84_details(bb84_result),
         "note": note,
+        "recalculatedTag": recalculated_tag[:24] if recalculated_tag else "",
     }
 
 
@@ -289,6 +293,17 @@ def _simulate_multihop_packet(message: str, attack_mode: str, nonce: str) -> tup
 
         if hop_attacked:
             tampered_payload = _tamper_payload(current_payload)
+            expected_tag_hex = ""
+            try:
+                derived_key = crypto_utils.derive_aes_key(current_key)
+                import hmac, hashlib, base64
+                iv = base64.b64decode(tampered_payload["iv"])
+                ciphertext = base64.b64decode(tampered_payload["ciphertext"])
+                expected_tag = hmac.new(derived_key, iv + ciphertext, hashlib.sha256).digest()
+                expected_tag_hex = base64.b64encode(expected_tag).decode("ascii")
+            except Exception:
+                pass
+
             steps.append({
                 "node": f"Hop {hop_number}",
                 "name": hop["name"],
@@ -306,6 +321,7 @@ def _simulate_multihop_packet(message: str, attack_mode: str, nonce: str) -> tup
                     key=current_key,
                     bb84_result=current_key_result,
                     note="Ciphertext was modified in transit; receiver should catch this by verifying HMAC before decrypting.",
+                    recalculated_tag=expected_tag_hex,
                 ),
             })
             current_payload = tampered_payload
@@ -628,6 +644,17 @@ def _handle_message(envelope: dict, peer_addr: str) -> dict:
         key_bytes = bytes.fromhex(packet["key"])
         plaintext = crypto_utils.decrypt_message(packet["payload"], key_bytes)
     except Exception as exc:
+        expected_tag_hex = ""
+        try:
+            derived_key = crypto_utils.derive_aes_key(key_bytes)
+            import hmac, hashlib, base64
+            iv = base64.b64decode(packet["payload"]["iv"])
+            ciphertext = base64.b64decode(packet["payload"]["ciphertext"])
+            expected_tag = hmac.new(derived_key, iv + ciphertext, hashlib.sha256).digest()
+            expected_tag_hex = base64.b64encode(expected_tag).decode("ascii")
+        except Exception:
+            pass
+
         attack_type = (
             "Man-in-the-Middle - AES integrity check failed"
             if attack_mode == "mitm"
@@ -651,6 +678,7 @@ def _handle_message(envelope: dict, peer_addr: str) -> dict:
                 "aesKeyLengthBits": len(str(packet.get("key", ""))) * 4,
                 "bb84": packet.get("routeMeta", {}).get("finalBb84", bb84_details),
                 "note": "No plaintext is released when AES HMAC verification fails.",
+                "recalculatedTag": expected_tag_hex[:24] if expected_tag_hex else "",
             },
         })
         crypto_details = _crypto_details(
@@ -658,6 +686,7 @@ def _handle_message(envelope: dict, peer_addr: str) -> dict:
             receiver_bb84=bb84_details,
             decrypted=False,
             blocked_reason=attack_type,
+            recalculated_tag=expected_tag_hex,
         )
         logger.emit_event(
             "receiver",
