@@ -17,12 +17,17 @@ export default function HopFlow({ statuses, attackMode, targetNode, onNodeClick 
     <section className="panel">
       <div className="panelHeader">
         <h2>Network Topology</h2>
-        {isAttack && (
-          <span className="attackBadge">
-            <Target size={14} />
-            Target: {displayNames[targetNode]}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <span className="infoBadge pulse">
+            💡 Click any node to view animation
           </span>
-        )}
+          {isAttack && (
+            <span className="attackBadge">
+              <Target size={14} />
+              Target: {displayNames[targetNode]}
+            </span>
+          )}
+        </div>
       </div>
       <div className="hopFlow">
         {route.map((node, index) => {

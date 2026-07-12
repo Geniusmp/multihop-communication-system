@@ -254,9 +254,14 @@ export default function PacketJourney({ events, onNodeClick }) {
     <section className="panel journeyPanel">
       <div className="panelHeader">
         <h2>Packet Journey</h2>
-        <span className="stepStatus">
-          {stageEvents.length} steps across {nodeSteps.length} nodes
-        </span>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <span className="infoBadge pulse">
+            💡 Click any node header to view animation
+          </span>
+          <span className="stepStatus">
+            {stageEvents.length} steps across {nodeSteps.length} nodes
+          </span>
+        </div>
       </div>
 
       <OutcomeBanner events={events} />
