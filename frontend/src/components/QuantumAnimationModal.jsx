@@ -793,11 +793,11 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
               <code className="red" style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", marginBottom: "4px" }}>ERROR: BAD HMAC SIGNATURE</code>
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "10px", opacity: 0.95 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
-                  <span style={{ color: "#aaa" }}>Envelope Tag:</span>
-                  <code style={{ color: "#e2e8f0" }}>{event?.tagPreview ? event.tagPreview.slice(0, 12) + "..." : "none"}</code>
+                  <span style={{ color: "#475569" }}>Envelope Tag:</span>
+                  <code style={{ color: "#1e293b" }}>{event?.tagPreview ? event.tagPreview.slice(0, 12) + "..." : "none"}</code>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
-                  <span style={{ color: "#aaa" }}>Recalculated:</span>
+                  <span style={{ color: "#475569" }}>Recalculated:</span>
                   <code style={{ color: "#ef4444" }}>
                     {event?.recalculatedTag 
                       ? event.recalculatedTag.slice(0, 12) + "..." 
