@@ -131,7 +131,7 @@ function SendExplanation({ sendResult }) {
   );
 }
 
-function mapRouteStepsToEvents(routeSteps, attackMode, targetNode) {
+function mapRouteStepsToEvents(routeSteps, attackMode, targetNode, originalMessage) {
   if (!routeSteps || routeSteps.length === 0) return [];
   const events = [];
   const now = new Date().toISOString();
@@ -175,8 +175,8 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode) {
         message: "AES-CBC encrypted plaintext for first hop",
         status: "info",
         phase: "aes-encrypt",
-        plaintextLength: crypto.plaintextPreview ? crypto.plaintextPreview.length : 0,
-        decryptedPreview: crypto.plaintextPreview,
+        plaintextLength: originalMessage ? originalMessage.length : (crypto.plaintextPreview ? crypto.plaintextPreview.length : 0),
+        decryptedPreview: originalMessage || crypto.plaintextPreview || crypto.decryptedPreview || crypto.senderPlaintextPreview,
         ivPreview: crypto.ivPreview,
         ciphertextPreview: crypto.ciphertextPreview,
         tagPreview: crypto.tagPreview,
@@ -234,14 +234,14 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode) {
           message: "AES-CBC decrypted packet from previous hop",
           status: "info",
           phase: "aes-decrypt",
-          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : 0,
+          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : (originalMessage ? originalMessage.length : 0),
           ivPreview: crypto.ivPreview,
           ciphertextPreview: crypto.ciphertextPreview,
           tagPreview: crypto.tagPreview,
           keyFingerprint: crypto.aesKeyFingerprint,
           previousHop: hopNum === "1" ? "sender" : `node${parseInt(hopNum) - 1}`,
           nextHop: hopNum === "3" ? "receiver" : `node${parseInt(hopNum) + 1}`,
-          decryptedPreview: crypto.decryptedPreview,
+          decryptedPreview: crypto.decryptedPreview || originalMessage,
           hopExplanation: `${nodeName} used the AES key from the previous hop to open the packet, recover the plaintext, and prepare it for re-encryption.`,
         });
 
@@ -272,8 +272,8 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode) {
           message: "AES-CBC encrypted packet for next hop",
           status: "info",
           phase: "aes-encrypt",
-          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : 0,
-          decryptedPreview: crypto.decryptedPreview,
+          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : (originalMessage ? originalMessage.length : 0),
+          decryptedPreview: crypto.decryptedPreview || originalMessage,
           ivPreview: crypto.ivPreview,
           ciphertextPreview: crypto.ciphertextPreview,
           tagPreview: crypto.tagPreview,
@@ -360,8 +360,8 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode) {
           message: "AES-CBC decrypted final packet",
           status: "info",
           phase: "aes-decrypt",
-          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : 0,
-          decryptedPreview: crypto.decryptedPreview,
+          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : (originalMessage ? originalMessage.length : 0),
+          decryptedPreview: crypto.decryptedPreview || originalMessage,
           ivPreview: crypto.payload ? crypto.payload.iv : (crypto.ivPreview || ""),
           ciphertextPreview: crypto.payload ? crypto.payload.ciphertext : (crypto.ciphertextPreview || ""),
           tagPreview: crypto.payload ? crypto.payload.tag : (crypto.tagPreview || ""),
@@ -371,9 +371,9 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode) {
         events.push({
           time: now,
           source: "receiver",
-          message: `Received plaintext: ${crypto.decryptedPreview}`,
+          message: `Received plaintext: ${crypto.decryptedPreview || originalMessage}`,
           status: "success",
-          plaintext: crypto.decryptedPreview,
+          plaintext: crypto.decryptedPreview || originalMessage,
         });
       }
     }
@@ -497,6 +497,7 @@ export default function App() {
   async function handleSend(e) {
     e.preventDefault();
     if (!message.trim() || !targetIp) return;
+    const originalMessage = message.trim();
     setBusy(true);
     setSendResult(null);
 
@@ -505,7 +506,7 @@ export default function App() {
 
     try {
       const result = await sendToPeer(
-        message.trim(), targetIp, targetSocketPort,
+        originalMessage, targetIp, targetSocketPort,
         attackMode, "", 5010
       );
       setSendResult(result);
@@ -523,7 +524,7 @@ export default function App() {
           else if (targetStep.node.includes("Receiver")) targetedNode = "receiver";
         }
 
-        const mappedEvents = mapRouteStepsToEvents(receiverResult.routeSteps, attackMode, targetedNode);
+        const mappedEvents = mapRouteStepsToEvents(receiverResult.routeSteps, attackMode, targetedNode, originalMessage);
 
         setNetEvents(mappedEvents);
         setNetStatuses(getStatusesFromRouteSteps(receiverResult.routeSteps));
