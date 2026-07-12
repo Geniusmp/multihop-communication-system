@@ -219,7 +219,7 @@ function OutcomeBanner({ events }) {
   return null;
 }
 
-export default function PacketJourney({ events }) {
+export default function PacketJourney({ events, onNodeClick }) {
   const stageEvents = useMemo(
     () => events.filter((e) => e.phase || e.status === "attack"),
     [events]
@@ -275,7 +275,11 @@ export default function PacketJourney({ events }) {
               className={`journeyNode ${hasAttack ? "attacked" : ""}`}
               key={nodeGroup.node}
             >
-              <div className="journeyNodeHeader">
+              <div 
+                className="journeyNodeHeader clickable"
+                onClick={() => onNodeClick && onNodeClick(nodeGroup.node)}
+                title="Click to view interactive QKD & AES animation"
+              >
                 <div className={`journeyNodeDot ${hasAttack ? "red" : "teal"}`}>
                   <NodeIcon size={16} />
                 </div>
@@ -286,6 +290,7 @@ export default function PacketJourney({ events }) {
                     <ShieldAlert size={12} /> Blocked
                   </span>
                 )}
+                <span className="journeyAnimateLink">Animate →</span>
               </div>
               <div className="journeyNodeSteps">
                 {nodeGroup.events.map((event, index) => (

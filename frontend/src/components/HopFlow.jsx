@@ -10,7 +10,7 @@ const displayNames = {
   receiver: "Receiver",
 };
 
-export default function HopFlow({ statuses, attackMode, targetNode }) {
+export default function HopFlow({ statuses, attackMode, targetNode, onNodeClick }) {
   const isAttack = attackMode && attackMode !== "normal";
 
   return (
@@ -32,7 +32,11 @@ export default function HopFlow({ statuses, attackMode, targetNode }) {
 
           return (
             <div className="hopGroup" key={node}>
-              <div className={`hop ${status} ${isTargeted ? 'blocked' : ''}`}>
+              <div 
+                className={`hop clickable ${status} ${isTargeted ? 'blocked' : ''}`}
+                onClick={() => onNodeClick && onNodeClick(node)}
+                title="Click to view step-by-step transmission animation"
+              >
                 <div className="hopIcon">
                   {isBlocked || isTargeted ? <ShieldAlert size={20} /> : <Lock size={18} />}
                 </div>
@@ -46,6 +50,7 @@ export default function HopFlow({ statuses, attackMode, targetNode }) {
                         ? `→ ${displayNames[statuses[node].nextHop] || statuses[node].nextHop}`
                         : "End"}
                 </small>
+                <div className="hop-animate-btn">Animate →</div>
               </div>
               {index < route.length - 1 && (
                 <div className={`connector ${isBlocked ? "blocked" : ""}`}>

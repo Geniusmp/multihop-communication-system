@@ -12,6 +12,7 @@ import ErrorRateBar from "./components/ErrorRateBar.jsx";
 import LiveLog from "./components/LiveLog.jsx";
 import PacketJourney from "./components/PacketJourney.jsx";
 import AttackControls from "./components/AttackControls.jsx";
+import QuantumAnimationModal from "./components/QuantumAnimationModal.jsx";
 
 const attackModes = [
   { id: "normal", label: "Normal send", Icon: Shield, color: "teal", desc: "All 3 hops forward the encrypted packet safely. Receiver decrypts it." },
@@ -148,6 +149,15 @@ export default function App() {
   const [statuses, setStatuses] = useState({});
   const [simAttackMode, setSimAttackMode] = useState("normal");
   const [targetNode, setTargetNode] = useState("node1");
+
+  // Animation visualizer state
+  const [activeAnimationNode, setActiveAnimationNode] = useState(null);
+  const [showAnimationModal, setShowAnimationModal] = useState(false);
+
+  function handleNodeClick(nodeName) {
+    setActiveAnimationNode(nodeName);
+    setShowAnimationModal(true);
+  }
 
   // Tab state
   const [activeTab, setActiveTab] = useState("network");
@@ -384,7 +394,12 @@ export default function App() {
           </form>
 
           <MetricCards metrics={metrics} statuses={statuses} attackMode={simAttackMode} />
-          <HopFlow statuses={statuses} attackMode={simAttackMode} targetNode={targetNode} />
+          <HopFlow 
+            statuses={statuses} 
+            attackMode={simAttackMode} 
+            targetNode={targetNode} 
+            onNodeClick={handleNodeClick}
+          />
 
           <div className="split">
             <section>
@@ -397,8 +412,21 @@ export default function App() {
             </section>
             <LiveLog events={events} />
           </div>
-          <PacketJourney events={events} attackMode={simAttackMode} />
+          <PacketJourney 
+            events={events} 
+            attackMode={simAttackMode} 
+            onNodeClick={handleNodeClick}
+          />
         </>
+      )}
+      {showAnimationModal && activeAnimationNode && (
+        <QuantumAnimationModal
+          node={activeAnimationNode}
+          events={events}
+          attackMode={simAttackMode}
+          targetNode={targetNode}
+          onClose={() => setShowAnimationModal(false)}
+        />
       )}
     </main>
   );
