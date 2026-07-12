@@ -131,6 +131,290 @@ function SendExplanation({ sendResult }) {
   );
 }
 
+function mapRouteStepsToEvents(routeSteps, attackMode, targetNode) {
+  if (!routeSteps || routeSteps.length === 0) return [];
+  const events = [];
+  const now = new Date().toISOString();
+
+  routeSteps.forEach((step) => {
+    const nodeName = step.node;
+    const crypto = step.crypto || {};
+    const bb84 = crypto.bb84 || {};
+
+    let source = "sender";
+    if (nodeName.includes("Hop 1")) source = "node1";
+    else if (nodeName.includes("Hop 2")) source = "node2";
+    else if (nodeName.includes("Hop 3")) source = "node3";
+    else if (nodeName.includes("Receiver")) source = "receiver";
+
+    if (nodeName === "Sender laptop") {
+      events.push({
+        time: now,
+        source: "sender",
+        message: "BB84 generated matching bases and sifted a shared key",
+        status: "info",
+        phase: "bb84",
+        generatedBits: bb84.generatedBits,
+        matchingBases: bb84.matchingBases,
+        siftedBits: bb84.siftedBits,
+        comparedBits: bb84.comparedBits,
+        errorRate: bb84.errorRate,
+        errorThreshold: bb84.errorThreshold || 0.15,
+        aliceBasisPreview: bb84.aliceBasisPreview,
+        bobBasisPreview: bb84.bobBasisPreview,
+        aliceBitPreview: bb84.aliceBitPreview,
+        bobBitPreview: bb84.bobBitPreview,
+        keepPreview: bb84.keepPreview,
+        siftedPreview: bb84.siftedPreview,
+        keyFingerprint: crypto.aesKeyFingerprint,
+      });
+
+      events.push({
+        time: now,
+        source: "sender",
+        message: "AES-CBC encrypted plaintext for first hop",
+        status: "info",
+        phase: "aes-encrypt",
+        plaintextLength: crypto.plaintextPreview ? crypto.plaintextPreview.length : 0,
+        decryptedPreview: crypto.plaintextPreview,
+        ivPreview: crypto.ivPreview,
+        ciphertextPreview: crypto.ciphertextPreview,
+        tagPreview: crypto.tagPreview,
+        keyFingerprint: crypto.aesKeyFingerprint,
+      });
+
+      events.push({
+        time: now,
+        source: "sender",
+        message: "Sent encrypted packet",
+        status: "success",
+        errorRate: bb84.errorRate,
+      });
+    } else if (nodeName.includes("Hop")) {
+      const hopNum = nodeName.replace("Hop ", "").trim();
+      const hopSource = `node${hopNum}`;
+
+      if (step.status === "attack") {
+        events.push({
+          time: now,
+          source: hopSource,
+          message: step.detail || "MITM tampering detected by AES integrity check",
+          status: "attack",
+          phase: "attack-detected",
+          detectionReason: step.detail || "AES integrity check failed",
+          attackMode: attackMode,
+          targetNode: targetNode,
+          inspectedAtTarget: true,
+          previousHop: hopNum === "1" ? "sender" : `node${parseInt(hopNum) - 1}`,
+          nextHop: hopNum === "3" ? "receiver" : `node${parseInt(hopNum) + 1}`,
+          detectionCheckpoint: "AES HMAC verification before plaintext release",
+          integrityTagPresent: true,
+          ciphertextTampered: true,
+          detectionEvidence: [
+            `Packet arrived at Hop ${hopNum} from ${hopNum === "1" ? "sender" : `Hop ${parseInt(hopNum) - 1}`}.`,
+            `The attacker modified the ciphertext in transit at Hop ${hopNum}.`,
+            "The attacker did not know the hop AES key, so it could not create a valid HMAC tag for the modified ciphertext.",
+            "Before decrypting, the node recalculated the HMAC over IV + ciphertext using the hop key.",
+            "Calculated tag did not match the packet tag.",
+            `Hop ${hopNum} blocked the packet and the router removed this hop from the active route.`
+          ],
+          errorRate: bb84.errorRate ?? 0,
+          errorThreshold: bb84.errorThreshold ?? 0.15,
+          noncePreview: crypto.nonce ? crypto.nonce.slice(0, 12) : "",
+          blockedNode: hopSource,
+          ivPreview: crypto.ivPreview,
+          ciphertextPreview: crypto.ciphertextPreview,
+          tagPreview: crypto.tagPreview,
+          keyFingerprint: crypto.aesKeyFingerprint,
+        });
+      } else {
+        events.push({
+          time: now,
+          source: hopSource,
+          message: "AES-CBC decrypted packet from previous hop",
+          status: "info",
+          phase: "aes-decrypt",
+          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : 0,
+          ivPreview: crypto.ivPreview,
+          ciphertextPreview: crypto.ciphertextPreview,
+          tagPreview: crypto.tagPreview,
+          keyFingerprint: crypto.aesKeyFingerprint,
+          previousHop: hopNum === "1" ? "sender" : `node${parseInt(hopNum) - 1}`,
+          nextHop: hopNum === "3" ? "receiver" : `node${parseInt(hopNum) + 1}`,
+          decryptedPreview: crypto.decryptedPreview,
+          hopExplanation: `${nodeName} used the AES key from the previous hop to open the packet, recover the plaintext, and prepare it for re-encryption.`,
+        });
+
+        events.push({
+          time: now,
+          source: hopSource,
+          message: "BB84 rekey completed for next hop",
+          status: "info",
+          phase: "bb84",
+          generatedBits: bb84.generatedBits,
+          matchingBases: bb84.matchingBases,
+          siftedBits: bb84.siftedBits,
+          comparedBits: bb84.comparedBits,
+          errorRate: bb84.errorRate,
+          errorThreshold: bb84.errorThreshold || 0.15,
+          aliceBasisPreview: bb84.aliceBasisPreview,
+          bobBasisPreview: bb84.bobBasisPreview,
+          aliceBitPreview: bb84.aliceBitPreview,
+          bobBitPreview: bb84.bobBitPreview,
+          keepPreview: bb84.keepPreview,
+          siftedPreview: bb84.siftedPreview,
+          keyFingerprint: crypto.aesKeyFingerprint,
+        });
+
+        events.push({
+          time: now,
+          source: hopSource,
+          message: "AES-CBC encrypted packet for next hop",
+          status: "info",
+          phase: "aes-encrypt",
+          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : 0,
+          decryptedPreview: crypto.decryptedPreview,
+          ivPreview: crypto.ivPreview,
+          ciphertextPreview: crypto.ciphertextPreview,
+          tagPreview: crypto.tagPreview,
+          keyFingerprint: crypto.aesKeyFingerprint,
+          previousHop: hopSource,
+          nextHop: hopNum === "3" ? "receiver" : `node${parseInt(hopNum) + 1}`,
+          hopExplanation: `${nodeName} generated a fresh BB84-derived AES key and encrypted the same plaintext.`,
+        });
+
+        events.push({
+          time: now,
+          source: hopSource,
+          message: "Forwarded encrypted packet",
+          status: "success",
+          errorRate: bb84.errorRate,
+        });
+      }
+    } else if (nodeName === "Receiver check") {
+      if (step.status === "attack") {
+        events.push({
+          time: now,
+          source: "receiver",
+          message: step.detail || "Replay Attack - duplicate nonce detected",
+          status: "attack",
+          phase: "attack-detected",
+          detectionReason: "Replay Attack - duplicate nonce detected",
+          attackMode: "replay",
+          targetNode: "receiver",
+          detectionCheckpoint: "nonce and BB84 checks before AES decrypt",
+          detectionEvidence: [
+            "Packet arrived at Receiver check.",
+            `Nonce preview ${crypto.nonce ? crypto.nonce.slice(0, 12) : ""}... was checked against the local replay cache.`,
+            "A duplicate nonce was found, indicating a potential replay attack.",
+            "The receiver immediately blocked and discarded the packet."
+          ],
+          noncePreview: crypto.nonce ? crypto.nonce.slice(0, 12) : "",
+          blockedNode: "receiver",
+        });
+      }
+    } else if (nodeName === "Receiver laptop" || nodeName === "Receiver") {
+      if (step.status === "attack") {
+        const isEavesdrop = attackMode === "eavesdrop";
+        const isMitm = attackMode === "mitm";
+        const reason = step.detail || (isEavesdrop ? "Eavesdropping detected" : "AES integrity check failed");
+
+        events.push({
+          time: now,
+          source: "receiver",
+          message: reason,
+          status: "attack",
+          phase: "attack-detected",
+          detectionReason: reason,
+          attackMode: attackMode,
+          targetNode: targetNode,
+          inspectedAtTarget: targetNode === "receiver",
+          previousHop: "node3",
+          nextHop: null,
+          detectionCheckpoint: isMitm ? "AES HMAC verification before plaintext release" : "nonce and BB84 checks before AES decrypt",
+          integrityTagPresent: isMitm,
+          ciphertextTampered: isMitm,
+          errorRate: bb84.errorRate ?? 0,
+          errorThreshold: bb84.errorThreshold ?? 0.15,
+          noncePreview: crypto.nonce ? crypto.nonce.slice(0, 12) : "",
+          blockedNode: "receiver",
+          ivPreview: crypto.ivPreview,
+          ciphertextPreview: crypto.ciphertextPreview,
+          tagPreview: crypto.tagPreview,
+          keyFingerprint: crypto.aesKeyFingerprint,
+          detectionEvidence: isEavesdrop ? [
+            "Packet arrived at Receiver from Hop 3.",
+            `BB84 error rate was ${Math.round((bb84.errorRate || 0) * 100)}%, exceeding the threshold of ${Math.round((bb84.errorThreshold || 0.15) * 100)}%.`,
+            "This high error rate indicates active measurement disturbance on the quantum channel by an eavesdropper.",
+            "The receiver aborted key derivation and blocked the transmission."
+          ] : [
+            "Packet arrived at Receiver from Hop 3.",
+            "The recalculated AES HMAC checksum over IV + Ciphertext did not match the envelope's tag.",
+            "The receiver blocked the packet to prevent ciphertext manipulation (MITM) attacks."
+          ],
+        });
+      } else {
+        events.push({
+          time: now,
+          source: "receiver",
+          message: "AES-CBC decrypted final packet",
+          status: "info",
+          phase: "aes-decrypt",
+          plaintextLength: crypto.decryptedPreview ? crypto.decryptedPreview.length : 0,
+          decryptedPreview: crypto.decryptedPreview,
+          ivPreview: crypto.payload ? crypto.payload.iv : (crypto.ivPreview || ""),
+          ciphertextPreview: crypto.payload ? crypto.payload.ciphertext : (crypto.ciphertextPreview || ""),
+          tagPreview: crypto.payload ? crypto.payload.tag : (crypto.tagPreview || ""),
+          keyFingerprint: crypto.aesKeyFingerprint,
+        });
+
+        events.push({
+          time: now,
+          source: "receiver",
+          message: `Received plaintext: ${crypto.decryptedPreview}`,
+          status: "success",
+          plaintext: crypto.decryptedPreview,
+        });
+      }
+    }
+  });
+
+  return events;
+}
+
+function getStatusesFromRouteSteps(routeSteps) {
+  const statuses = {
+    sender: { status: "active", nextHop: "node1" },
+    node1: { status: "active", nextHop: "node2" },
+    node2: { status: "active", nextHop: "node3" },
+    node3: { status: "active", nextHop: "receiver" },
+    receiver: { status: "active" },
+  };
+
+  if (!routeSteps) return statuses;
+
+  routeSteps.forEach((step) => {
+    let key = null;
+    if (step.node === "Sender laptop") key = "sender";
+    else if (step.node.includes("Hop 1")) key = "node1";
+    else if (step.node.includes("Hop 2")) key = "node2";
+    else if (step.node.includes("Hop 3")) key = "node3";
+    else if (step.node === "Receiver check" || step.node === "Receiver laptop" || step.node === "Receiver") key = "receiver";
+
+    if (key) {
+      if (step.status === "attack") {
+        statuses[key].status = "blocked";
+      } else if (step.status === "warning") {
+        statuses[key].status = "warning";
+      } else if (step.status === "success") {
+        statuses[key].status = "active";
+      }
+    }
+  });
+
+  return statuses;
+}
+
 export default function App() {
   // Peer state
   const [selfInfo, setSelfInfo] = useState(null);
@@ -153,6 +437,18 @@ export default function App() {
   // Animation visualizer state
   const [activeAnimationNode, setActiveAnimationNode] = useState(null);
   const [showAnimationModal, setShowAnimationModal] = useState(false);
+
+  // Real network visualizer state
+  const [netEvents, setNetEvents] = useState([]);
+  const [netStatuses, setNetStatuses] = useState({
+    sender: { status: "active", nextHop: "node1" },
+    node1: { status: "active", nextHop: "node2" },
+    node2: { status: "active", nextHop: "node3" },
+    node3: { status: "active", nextHop: "receiver" },
+    receiver: { status: "active" },
+  });
+  const [netAttackMode, setNetAttackMode] = useState("normal");
+  const [netTargetNode, setNetTargetNode] = useState("node1");
 
   function handleNodeClick(nodeName) {
     setActiveAnimationNode(nodeName);
@@ -214,6 +510,27 @@ export default function App() {
       );
       setSendResult(result);
       setMessage("");
+
+      // Update Net Simulation States for Animation
+      const receiverResult = getReceiverResult(result);
+      if (receiverResult && receiverResult.routeSteps) {
+        const targetStep = receiverResult.routeSteps.find(s => s.status === "attack");
+        let targetedNode = "node1";
+        if (targetStep) {
+          if (targetStep.node.includes("Hop 1")) targetedNode = "node1";
+          else if (targetStep.node.includes("Hop 2")) targetedNode = "node2";
+          else if (targetStep.node.includes("Hop 3")) targetedNode = "node3";
+          else if (targetStep.node.includes("Receiver")) targetedNode = "receiver";
+        }
+
+        const mappedEvents = mapRouteStepsToEvents(receiverResult.routeSteps, attackMode, targetedNode);
+
+        setNetEvents(mappedEvents);
+        setNetStatuses(getStatusesFromRouteSteps(receiverResult.routeSteps));
+        setNetAttackMode(attackMode);
+        setNetTargetNode(targetedNode);
+      }
+
       setTimeout(refreshAll, 500);
     } catch (err) {
       setSendResult({ ok: false, error: err.message });
@@ -351,11 +668,25 @@ export default function App() {
             )}
           </section>
 
+          <HopFlow 
+            statuses={netStatuses} 
+            attackMode={netAttackMode} 
+            targetNode={netTargetNode} 
+            onNodeClick={handleNodeClick}
+            receiverName={targetPeer?.name}
+          />
+
           {/* ─── Network Grid ─── */}
           <div className="networkGrid">
             <PeerList selfInfo={selfInfo} peers={peers} onRefresh={refreshAll} />
             <InboxPanel messages={inboxMessages} onClear={async () => { await clearInbox(); await refreshAll(); }} />
           </div>
+
+          <PacketJourney 
+            events={netEvents} 
+            onNodeClick={handleNodeClick}
+            receiverName={targetPeer?.name}
+          />
 
           {/* ─── Metrics + Log ─── */}
           <div className="split">
@@ -422,9 +753,9 @@ export default function App() {
       {showAnimationModal && activeAnimationNode && (
         <QuantumAnimationModal
           node={activeAnimationNode}
-          events={events}
-          attackMode={simAttackMode}
-          targetNode={targetNode}
+          events={activeTab === "network" ? netEvents : events}
+          attackMode={activeTab === "network" ? netAttackMode : simAttackMode}
+          targetNode={activeTab === "network" ? netTargetNode : targetNode}
           onClose={() => setShowAnimationModal(false)}
         />
       )}

@@ -10,8 +10,13 @@ const displayNames = {
   receiver: "Receiver",
 };
 
-export default function HopFlow({ statuses, attackMode, targetNode, onNodeClick }) {
+export default function HopFlow({ statuses, attackMode, targetNode, onNodeClick, receiverName }) {
   const isAttack = attackMode && attackMode !== "normal";
+
+  const getDisplayName = (n) => {
+    if (n === "receiver") return receiverName || "Receiver";
+    return displayNames[n] || n;
+  };
 
   return (
     <section className="panel">
@@ -24,7 +29,7 @@ export default function HopFlow({ statuses, attackMode, targetNode, onNodeClick 
           {isAttack && (
             <span className="attackBadge">
               <Target size={14} />
-              Target: {displayNames[targetNode]}
+              Target: {getDisplayName(targetNode)}
             </span>
           )}
         </div>
@@ -34,6 +39,7 @@ export default function HopFlow({ statuses, attackMode, targetNode, onNodeClick 
           const status = statuses[node]?.status || "active";
           const isBlocked = status === "blocked";
           const isTargeted = isAttack && node === targetNode;
+          const nodeName = getDisplayName(node);
 
           return (
             <div className="hopGroup" key={node}>
@@ -45,14 +51,14 @@ export default function HopFlow({ statuses, attackMode, targetNode, onNodeClick 
                 <div className="hopIcon">
                   {isBlocked || isTargeted ? <ShieldAlert size={20} /> : <Lock size={18} />}
                 </div>
-                <span>{displayNames[node]}</span>
+                <span>{nodeName}</span>
                 <small>
                   {isBlocked
                     ? "Blocked"
                     : isTargeted
                       ? "Compromised"
                       : statuses[node]?.nextHop
-                        ? `→ ${displayNames[statuses[node].nextHop] || statuses[node].nextHop}`
+                        ? `→ ${getDisplayName(statuses[node].nextHop)}`
                         : "End"}
                 </small>
                 <div className="hop-animate-btn">Animate →</div>

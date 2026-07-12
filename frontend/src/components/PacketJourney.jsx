@@ -219,7 +219,7 @@ function OutcomeBanner({ events }) {
   return null;
 }
 
-export default function PacketJourney({ events, onNodeClick }) {
+export default function PacketJourney({ events, onNodeClick, receiverName }) {
   const stageEvents = useMemo(
     () => events.filter((e) => e.phase || e.status === "attack"),
     [events]
@@ -230,11 +230,11 @@ export default function PacketJourney({ events, onNodeClick }) {
     return nodeOrder
       .map((node) => ({
         node,
-        name: nodeNames[node],
+        name: node === "receiver" ? (receiverName || "Receiver") : nodeNames[node],
         events: stageEvents.filter((e) => e.source === node),
       }))
       .filter((n) => n.events.length > 0);
-  }, [stageEvents]);
+  }, [stageEvents, receiverName]);
 
   if (stageEvents.length === 0) {
     return (

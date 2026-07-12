@@ -409,7 +409,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         {steps.length === 0 ? (
           <div className="anim-empty">
             <Trash2 size={48} />
-            <p>No recorded simulation data for this node. Try sending a message in the local simulation first!</p>
+            <p>No recorded data for this node. Try sending a message first!</p>
           </div>
         ) : (
           <div className="anim-modal-body">
