@@ -255,20 +255,33 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
           id: "mitm_attack",
           title: "2. Attacker Tampering (MITM)",
           desc: "A Man-in-the-Middle attacker intercepts the ciphertext in transit and alters it.",
-          render: () => (
-            <div className="anim-step-card danger-card mitm-glitch">
-              <Eye size={40} className="anim-icon red pulse" />
-              <h3>MITM Cipher Tampering</h3>
-              <div className="mitm-box">
-                <div className="packet-tampered">
-                  <code>ORIGINAL CIPHER: {attackEvent.ciphertextPreview || "e59ac"}...</code>
-                  <div className="lightning-bolt">⚡</div>
-                  <code className="red">TAMPERED CIPHER: {attackEvent.ciphertextPreview ? String(attackEvent.ciphertextPreview).split('').map((c, i) => i === 0 ? 'X' : c).join('') : "x59ac"}...</code>
+          render: () => {
+            const routeOrder = ["sender", "node1", "node2", "node3", "receiver"];
+            const nodeIndex = routeOrder.indexOf(node);
+            const prevNode = nodeIndex > 0 ? routeOrder[nodeIndex - 1] : "sender";
+
+            const prevEncryptEvent = lastJourneyEvents.find(
+              (e) => e.source === prevNode && e.phase === "aes-encrypt"
+            );
+
+            const originalCipherText = prevEncryptEvent?.ciphertextPreview || "e59ac";
+            const tamperedCipherText = attackEvent.ciphertextPreview || "x59ac";
+
+            return (
+              <div className="anim-step-card danger-card mitm-glitch">
+                <Eye size={40} className="anim-icon red pulse" />
+                <h3>MITM Cipher Tampering</h3>
+                <div className="mitm-box">
+                  <div className="packet-tampered">
+                    <code>ORIGINAL CIPHER: {originalCipherText}...</code>
+                    <div className="lightning-bolt">⚡</div>
+                    <code className="red">TAMPERED CIPHER: {tamperedCipherText}...</code>
+                  </div>
                 </div>
+                <p className="note">The attacker flips bits in the ciphertext in transit. However, because they do not know the AES key shared between the previous nodes, they cannot compute a valid HMAC signature tag.</p>
               </div>
-              <p className="note">The attacker flips bits in the ciphertext in transit. However, because they do not know the AES key shared between the previous nodes, they cannot compute a valid HMAC signature tag.</p>
-            </div>
-          )
+            );
+          }
         });
 
         list.push({

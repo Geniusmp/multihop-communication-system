@@ -338,9 +338,9 @@ function mapRouteStepsToEvents(routeSteps, attackMode, targetNode, originalMessa
           errorThreshold: bb84.errorThreshold ?? 0.15,
           noncePreview: crypto.nonce ? crypto.nonce.slice(0, 12) : "",
           blockedNode: "receiver",
-          ivPreview: crypto.ivPreview,
-          ciphertextPreview: crypto.ciphertextPreview,
-          tagPreview: crypto.tagPreview,
+          ivPreview: crypto.payload ? crypto.payload.iv : (crypto.ivPreview || ""),
+          ciphertextPreview: crypto.payload ? crypto.payload.ciphertext : (crypto.ciphertextPreview || ""),
+          tagPreview: crypto.payload ? crypto.payload.tag : (crypto.tagPreview || ""),
           keyFingerprint: crypto.aesKeyFingerprint,
           detectionEvidence: isEavesdrop ? [
             "Packet arrived at Receiver from Hop 3.",
