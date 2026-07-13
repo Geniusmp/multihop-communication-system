@@ -1,4 +1,5 @@
-import { Shield, RadioTower, Repeat, UserRoundX, AlertTriangle, Info } from "lucide-react";
+import React from "react";
+import { Shield, RadioTower, Repeat, UserRoundX, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { setAttackMode } from "../api/client.js";
 
 const modes = [
@@ -54,12 +55,15 @@ export default function AttackControls({ currentMode, targetNode, onChange }) {
   const isAttack = currentMode !== "normal";
 
   return (
-    <section className="panel">
+    <section className="panel" style={{ border: isAttack ? "1px solid rgba(255, 51, 102, 0.25)" : "" }}>
       <div className="panelHeader">
-        <h2>Attack Controls</h2>
+        <div className="panelHeaderLeft">
+          <ShieldAlert size={16} className="panelHeaderIcon" style={{ color: isAttack ? "var(--neon-red)" : "" }} />
+          <h2>Attack Controls</h2>
+        </div>
         {isAttack && (
-          <span className="attackBadge">
-            <AlertTriangle size={14} />
+          <span className="attackBadge" style={{ background: "rgba(255,51,102,0.08)", color: "var(--neon-red)", border: "1px solid rgba(255,51,102,0.2)", padding: "2px 8px", borderRadius: "4px", fontSize: "10.5px" }}>
+            <AlertTriangle size={12} style={{ marginRight: "3px" }} />
             {activeMode.label} Active
           </span>
         )}
@@ -83,14 +87,16 @@ export default function AttackControls({ currentMode, targetNode, onChange }) {
             type="button"
             className={`attackBtn ${mode.id} ${currentMode === mode.id ? "active" : ""}`}
             onClick={() => chooseMode(mode.id)}
+            title={`Simulate ${mode.label} behavior`}
           >
-            <mode.Icon size={18} />
+            <mode.Icon size={16} style={{ marginRight: "4px" }} />
             {mode.label}
           </button>
         ))}
       </div>
+      
       <div className={`attackDescription ${isAttack ? "warning" : ""}`}>
-        <Info size={14} />
+        <Info size={14} style={{ flexShrink: 0, marginTop: "2px" }} />
         <p>{activeMode.description}</p>
       </div>
     </section>

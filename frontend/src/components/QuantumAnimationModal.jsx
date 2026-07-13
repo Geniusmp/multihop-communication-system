@@ -77,12 +77,12 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
       list.push({
         id: "unreached",
         title: "Node Unreached",
-        desc: "This node was not reached because the packet transmission was blocked at an earlier node.",
+        desc: "This routing node was not active in the path because the transmission was dropped prior to it.",
         render: () => (
           <div className="anim-unreached">
             <ShieldAlert size={48} className="anim-icon red flash" />
-            <h3>Transmission Blocked Prior to This Node</h3>
-            <p>Check the previous nodes to see where the attack was detected and blocked.</p>
+            <h3 style={{ color: "var(--neon-red)" }}>Route Dropped in Advance</h3>
+            <p style={{ marginTop: "8px", fontSize: "13px" }}>Check previous nodes on the topology board to debug where the security check failed.</p>
           </div>
         )
       });
@@ -93,18 +93,18 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
       list.push({
         id: "start",
         title: "1. Plaintext Message",
-        desc: "The Sender initiates communication by preparing a plaintext message to encrypt and send.",
+        desc: "The Sender node prepares a plaintext payload to encrypt and forward.",
         render: () => (
           <div className="anim-step-card">
             <Unlock size={40} className="anim-icon teal" />
             <h3>Plaintext Message</h3>
             <div className="cryptoBox">
-              <strong>Message Content:</strong>
+              <strong style={{ fontSize: "11px", textTransform: "uppercase", color: "var(--neon-cyan)" }}>Message:</strong>
               <div className="plaintextPreview">
                 {decryptEvent?.decryptedPreview || encryptEvent?.decryptedPreview || "QuantumHop Message"}
               </div>
             </div>
-            <p className="note">To prevent any interceptor from reading this message, it will be encrypted using AES-256-CBC encryption. First, a fresh secure key must be generated using BB84 Quantum Key Distribution.</p>
+            <p className="note">To secure the signal against eavesdroppers, the node encrypts the plaintext using AES-256-CBC. First, Alice sifts a fresh shared key using the BB84 Quantum protocol.</p>
           </div>
         )
       });
@@ -112,32 +112,32 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
       list.push({
         id: "qkd_polarization",
         title: "2. QKD Basis Exchange",
-        desc: "Alice (Sender) encodes random bits onto photons with random polarizations and Bob (Node 1) measures them.",
+        desc: "Alice preparation: sending random bits polarized via rectilinear (+) or diagonal (x) bases.",
         render: (isPlaying) => <QKDExchangeVisualizer event={qkdEvent} eavesdrop={false} isPlaying={isPlaying} />
       });
 
       list.push({
         id: "qkd_sifting",
         title: "3. Sifting & Key Derivation",
-        desc: "Bases comparison over a classical link. Disagreeing bases are dropped; remaining bits are hashed into an AES key.",
+        desc: "Exchange bases over a classical link. Dropping columns where bases disagree sifts a shared key.",
         render: () => <QKDSiftingVisualizer event={qkdEvent} eavesdrop={false} />
       });
 
       list.push({
         id: "aes_encrypt",
         title: "4. AES Encryption",
-        desc: "Plaintext is encrypted using the derived BB84 key and tagged with an HMAC signature for integrity.",
+        desc: "Plaintext is encrypted and tagged with an HMAC signature using the derived key.",
         render: () => <AESEncryptVisualizer event={encryptEvent} />
       });
 
       list.push({
         id: "forward",
         title: "5. Forwarding Packet",
-        desc: "The encrypted envelope is sent over the network socket to Node 1.",
+        desc: "The packed encrypted envelope is forwarded over the network socket to Node 1.",
         render: () => (
           <div className="anim-step-card animate-fly">
             <Zap size={40} className="anim-icon yellow pulse" />
-            <h3>Packet Forwarded</h3>
+            <h3>Encrypted Packet Forwarded</h3>
             <div className="envelope">
               <div className="envelope-back">
                 <code>IV: {encryptEvent?.ivPreview || "b28cf..."}</code>
@@ -145,15 +145,15 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
                 <code>HMAC: {encryptEvent?.tagPreview || "8a1e2..."}</code>
               </div>
             </div>
-            <p className="note">The packet is secure in transit because any eavesdropper without the key can only see randomized ciphertext bytes.</p>
+            <p className="note">The cipher envelope is secure in transit. Adversaries without the sifting key only see randomized bytes.</p>
           </div>
         )
       });
     } else if (node === "receiver") {
       list.push({
         id: "arrival",
-        title: "1. Envelope Arrival",
-        desc: "The receiver receives the final encrypted packet from Node 3.",
+        title: "1. Packet Arrival",
+        desc: "The receiver gateway registers the encrypted envelope forwarded by Relay 3.",
         render: () => (
           <div className="anim-step-card">
             <Lock size={40} className="anim-icon blue" />
@@ -173,17 +173,19 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         list.push({
           id: "replay_block",
           title: "2. Replay Check & Block",
-          desc: "The receiver checks if the packet nonce has already been seen in the replay cache.",
+          desc: "The receiver gateway checks if the incoming nonce is cached.",
           render: () => (
             <div className="anim-step-card danger-card">
               <ShieldAlert size={48} className="anim-icon red flash" />
-              <h3>Replay Attack Detected!</h3>
+              <h3 style={{ color: "var(--neon-red)" }}>Replay Attack Detected!</h3>
               <div className="evidence">
-                <Database size={16} />
-                <code>Incoming Nonce: {attackEvent.noncePreview}...</code>
-                <span className="errorText">STATUS: DUPLICATE NONCE FOUND IN CACHE!</span>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <Database size={14} style={{ color: "var(--neon-red)" }} />
+                  <code style={{ fontSize: "11px" }}>Arrived Nonce: {attackEvent.noncePreview}...</code>
+                </div>
+                <span className="errorText">STATUS: DUPLICATE NONCE SIGNATURE DETECTED</span>
               </div>
-              <p className="note">To prevent attackers from capturing and re-transmitting valid envelopes to command nodes, the receiver blocks duplicate nonces immediately.</p>
+              <p className="note">To block network loop hijack attempts, the receiver rejects duplicate nonces immediately, dumping the packet.</p>
             </div>
           )
         });
@@ -191,36 +193,36 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         list.push({
           id: "aes_decrypt",
           title: "2. Decryption & Integrity",
-          desc: "The receiver checks the nonce, verifies the HMAC tag, and decrypts the plaintext.",
+          desc: "Verify HMAC signature, check nonce, and decrypt the cipher using the sifting key.",
           render: () => <AESDecryptVisualizer event={decryptEvent} node={node} isSuccess={true} />
         });
 
         list.push({
           id: "success",
           title: "3. Message Delivered",
-          desc: "The plaintext message is recovered successfully and displayed in the receiver's inbox.",
+          desc: "Decrypted plaintext signal recovered successfully and recorded in console inbox.",
           render: () => (
             <div className="anim-step-card success-card">
-              <CheckCircle2 size={48} className="anim-icon green success-pulse" />
+              <CheckCircle2 size={48} className="anim-icon green pulse" style={{ color: "var(--neon-emerald)" }} />
               <h3>Secure Delivery Complete</h3>
               <div className="plaintextPreview green">
-                {decryptEvent?.decryptedPreview || "Message received!"}
+                {decryptEvent?.decryptedPreview || "Payload decrypted!"}
               </div>
-              <p className="note">The message arrived secure, complete, and authentic, verified by step-by-step cryptographic checks.</p>
+              <p className="note">Link verified successfully. Cryptographic sifting and integrity checking complete.</p>
             </div>
           )
         });
       }
     } else {
-      // It is a generic Hop (node1, node2, node3)
+      // Generic Hop (node1, node2, node3)
       list.push({
         id: "arrival",
-        title: "1. Envelope Arrival",
-        desc: "The hop receives the encrypted packet from the previous node.",
+        title: "1. Packet Arrival",
+        desc: "The relay node registers the encrypted envelope.",
         render: () => (
           <div className="anim-step-card">
             <Lock size={40} className="anim-icon blue" />
-            <h3>Packet Arrival</h3>
+            <h3>Encrypted Packet Arrived</h3>
             <div className="envelope">
               <div className="envelope-back">
                 <code>IV: {decryptEvent?.ivPreview || attackEvent?.ivPreview || "b28cf..."}</code>
@@ -236,17 +238,19 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         list.push({
           id: "replay_block",
           title: "2. Replay Check & Block",
-          desc: "The node checks the replay cache for the packet's unique nonce.",
+          desc: "The node checks the cache for duplicate nonce footprints.",
           render: () => (
             <div className="anim-step-card danger-card">
               <ShieldAlert size={48} className="anim-icon red flash" />
-              <h3>Replay Attack Detected!</h3>
+              <h3 style={{ color: "var(--neon-red)" }}>Replay Attack Detected!</h3>
               <div className="evidence">
-                <Database size={16} />
-                <code>Nonce: {attackEvent.noncePreview}...</code>
-                <span className="errorText">STATUS: DUPLICATE NONCE ENCOUNTERED</span>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <Database size={14} style={{ color: "var(--neon-red)" }} />
+                  <code style={{ fontSize: "11px" }}>Nonce: {attackEvent.noncePreview}...</code>
+                </div>
+                <span className="errorText">STATUS: DUPLICATE NONCE FOOTPRINT FOUND</span>
               </div>
-              <p className="note">The node immediately drops the packet and blocks routing paths containing the source to isolate potential attackers.</p>
+              <p className="note">The relay node blacklists the sender route and drops the duplicate signal immediately.</p>
             </div>
           )
         });
@@ -254,7 +258,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         list.push({
           id: "mitm_attack",
           title: "2. Attacker Tampering (MITM)",
-          desc: "A Man-in-the-Middle attacker intercepts the ciphertext in transit and alters it.",
+          desc: "An active adversary intercepts the ciphertext on the link and alters it.",
           render: () => {
             const routeOrder = ["sender", "node1", "node2", "node3", "receiver"];
             const nodeIndex = routeOrder.indexOf(node);
@@ -269,7 +273,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
 
             return (
               <div className="anim-step-card danger-card mitm-glitch">
-                <Eye size={40} className="anim-icon red pulse" />
+                <Eye size={40} className="anim-icon red pulse" style={{ color: "var(--neon-red)" }} />
                 <h3>MITM Cipher Tampering</h3>
                 <div className="mitm-box">
                   <div className="packet-tampered">
@@ -278,7 +282,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
                     <code className="red">TAMPERED CIPHER: {tamperedCipherText}...</code>
                   </div>
                 </div>
-                <p className="note">The attacker flips bits in the ciphertext in transit. However, because they do not know the AES key shared between the previous nodes, they cannot compute a valid HMAC signature tag.</p>
+                <p className="note">The adversary modifies bytes in transit. However, since they do not have the sifting key, they cannot calculate a matching HMAC tag.</p>
               </div>
             );
           }
@@ -287,7 +291,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         list.push({
           id: "aes_decrypt_fail",
           title: "3. Decryption Fail & Block",
-          desc: "The hop checks the integrity of the ciphertext using the HMAC tag. Since ciphertext was tampered, the check fails.",
+          desc: "Recalculating the HMAC checksum shows the payload was altered. plain text release blocked.",
           render: () => <AESDecryptVisualizer event={attackEvent} node={node} isSuccess={false} />
         });
       } else {
@@ -295,7 +299,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         list.push({
           id: "aes_decrypt",
           title: "2. Decryption & Verification",
-          desc: "The hop decrypts the packet using the AES key from the previous node and verifies its integrity.",
+          desc: "Verify HMAC integrity and decrypt using the link key sifting by previous hop.",
           render: () => <AESDecryptVisualizer event={decryptEvent} node={node} isSuccess={true} />
         });
 
@@ -304,15 +308,15 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
           id: "qkd_polarization",
           title: "3. QKD Rekeying Basis Exchange",
           desc: isEavesdropHere 
-            ? "Eve eavesdrops on the fiber optic link, measuring photons in her own random bases. This disturbs their state."
-            : "QKD is initiated to exchange a fresh key for the next link. Qubits are transmitted and measured.",
+            ? "Eve intercepts and measures link photons. Measuring collapses their state, introducing errors."
+            : "Alice and Bob initiate a fresh BB84 key exchange for the next link routing.",
           render: (isPlaying) => <QKDExchangeVisualizer event={qkdEvent} eavesdrop={isEavesdropHere} isPlaying={isPlaying} />
         });
 
         list.push({
           id: "qkd_sifting",
           title: "4. Sifting & Error Rate Check",
-          desc: "Bases comparison. If error rate stays below the threshold, a key is derived. If not, eavesdropping is detected.",
+          desc: "Announce bases. Compute QBER. If it exceeds 15%, drop sifting and raise alarm.",
           render: () => <QKDSiftingVisualizer event={qkdEvent} eavesdrop={isEavesdropHere} />
         });
 
@@ -320,16 +324,16 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
           list.push({
             id: "eavesdrop_block",
             title: "5. Eavesdropping Detection & Block",
-            desc: "The measured error rate exceeds the limit, signaling a listening adversary. The key is rejected and node is blocked.",
+            desc: "Quantum sifting audit logs too many errors. Key discarded; path blocked.",
             render: () => (
               <div className="anim-step-card danger-card">
                 <ShieldAlert size={48} className="anim-icon red flash" />
-                <h3>Quantum Eavesdropping Caught!</h3>
+                <h3 style={{ color: "var(--neon-red)" }}>Quantum Eavesdropping Caught!</h3>
                 <div className="evidence">
-                  <span>QBER (Error Rate): <strong className="red">{Math.round((attackEvent.errorRate || 0) * 100)}%</strong></span>
-                  <span>Limit Allowed: <strong>{Math.round((attackEvent.errorThreshold || 0.15) * 100)}%</strong></span>
+                  <span style={{ fontSize: "12px" }}>Calculated QBER Anomaly: <strong className="red" style={{ color: "var(--neon-red)" }}>{Math.round((attackEvent.errorRate || 0) * 100)}%</strong></span>
+                  <span style={{ fontSize: "12px" }}>Threshold Limit: <strong>{Math.round((attackEvent.errorThreshold || 0.15) * 100)}%</strong></span>
                 </div>
-                <p className="note">By the laws of quantum mechanics (Heisenberg Uncertainty Principle), any measurement of qubits by an eavesdropper alters their states. Bob's measurements disagree with Alice's bases on about 25% of the sifted bits, giving away the intruder's presence!</p>
+                <p className="note">By the laws of quantum mechanics (Heisenberg Uncertainty Principle), measuring photons collapses their spin. Eve's guess attempts introduce ~25% error rate, triggering the sifting block.</p>
               </div>
             )
           });
@@ -337,14 +341,14 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
           list.push({
             id: "aes_encrypt",
             title: "5. Re-encryption for Next Hop",
-            desc: "The plaintext is re-encrypted using the new derived key and a fresh initialization vector (IV).",
+            desc: "Plaintext is re-encrypted using the newly derived sifting key for the next link.",
             render: () => <AESEncryptVisualizer event={encryptEvent} />
           });
 
           list.push({
             id: "forward",
             title: "6. Forwarding Packet",
-            desc: "The re-encrypted envelope is forwarded to the next routing node.",
+            desc: "The re-encrypted envelope is forwarded over network sockets to the next routing hop.",
             render: () => (
               <div className="anim-step-card animate-fly">
                 <Zap size={40} className="anim-icon yellow pulse" />
@@ -356,7 +360,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
                     <code>HMAC: {encryptEvent?.tagPreview || "8a1e2..."}</code>
                   </div>
                 </div>
-                <p className="note">The hop successfully acted as a secure router: decrypting with the input key, sifting a new QKD key, encrypting, and forwarding.</p>
+                <p className="note">The relay node complete security routing: decrypted with incoming key, sifting a new QKD key, re-encrypted, and forwarded.</p>
               </div>
             )
           });
@@ -410,19 +414,19 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
         {/* Modal Header */}
         <header className="anim-modal-header">
           <div className="anim-header-left">
-            <span className="anim-eyebrow">Interactive Node Animation</span>
+            <span className="anim-eyebrow">BB84 Quantum Key Distribution</span>
             <h2>Diagnostic Visualizer: {node.toUpperCase()}</h2>
           </div>
-          <button className="anim-close-btn" onClick={onClose} aria-label="Close modal">
-            <X size={20} />
+          <button className="anim-close-btn" onClick={onClose} aria-label="Close diagnostic modal" style={{ padding: "6px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", background: "rgba(255,255,255,0.02)" }}>
+            <X size={16} />
           </button>
         </header>
 
         {/* Modal Body */}
         {steps.length === 0 ? (
           <div className="anim-empty">
-            <Trash2 size={48} />
-            <p>No recorded data for this node. Try sending a message first!</p>
+            <Trash2 size={36} style={{ color: "var(--neon-red)", opacity: 0.7 }} />
+            <p>Awaiting events database. Launch a link signal first to log traces.</p>
           </div>
         ) : (
           <div className="anim-modal-body">
@@ -446,7 +450,11 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
               <div className="anim-attack-info-box">
                 <h4>Active Configuration</h4>
                 <div className={`status-badge ${nodeAttackMode}`}>
-                  {nodeAttackMode === "normal" ? <Shield size={14} /> : <ShieldAlert size={14} />}
+                  {nodeAttackMode === "normal" ? (
+                    <Shield size={12} style={{ marginRight: "3px" }} />
+                  ) : (
+                    <ShieldAlert size={12} style={{ marginRight: "3px" }} />
+                  )}
                   <span>Mode: {nodeAttackMode.toUpperCase()}</span>
                 </div>
                 {node === targetNode && attackMode !== "normal" && (
@@ -458,7 +466,7 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
             {/* Visualizer Right Panel */}
             <main className="anim-visualizer-panel">
               <div className="anim-step-desc">
-                <h3>{currentStep?.title}</h3>
+                <h3 style={{ color: "var(--neon-cyan)", fontFamily: "var(--font-cyber)", textTransform: "uppercase" }}>{currentStep?.title}</h3>
                 <p>{currentStep?.desc}</p>
               </div>
 
@@ -469,23 +477,23 @@ export default function QuantumAnimationModal({ node, events, attackMode, target
               {/* Player Controls */}
               <footer className="anim-controls-footer">
                 <div className="player-btns">
-                  <button type="button" className="ctrl-btn" onClick={handleRestart} title="Restart">
-                    <RotateCcw size={16} />
+                  <button type="button" className="ctrl-btn" onClick={handleRestart} title="Re-evaluate from start">
+                    <RotateCcw size={14} />
                   </button>
-                  <button type="button" className="ctrl-btn" onClick={handlePrev} disabled={currentStepIndex === 0}>
-                    <ChevronLeft size={18} />
+                  <button type="button" className="ctrl-btn" onClick={handlePrev} disabled={currentStepIndex === 0} title="Previous Step">
+                    <ChevronLeft size={16} />
                   </button>
-                  <button type="button" className="ctrl-btn play-btn" onClick={() => setIsPlaying(!isPlaying)}>
-                    {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                    <span>{isPlaying ? "Pause" : "Play"}</span>
+                  <button type="button" className="ctrl-btn play-btn" onClick={() => setIsPlaying(!isPlaying)} style={{ minHeight: "36px", padding: "0 16px" }} title={isPlaying ? "Pause Step Evaluation" : "Auto-evaluate Step Loop"}>
+                    {isPlaying ? <Pause size={14} style={{ marginRight: "4px" }} /> : <Play size={14} style={{ marginRight: "4px" }} />}
+                    <span>{isPlaying ? "PAUSE" : "PLAY"}</span>
                   </button>
-                  <button type="button" className="ctrl-btn" onClick={handleNext} disabled={currentStepIndex === steps.length - 1}>
-                    <ChevronRight size={18} />
+                  <button type="button" className="ctrl-btn" onClick={handleNext} disabled={currentStepIndex === steps.length - 1} title="Next Step">
+                    <ChevronRight size={16} />
                   </button>
                 </div>
 
                 <div className="speed-ctrl">
-                  <span>Speed:</span>
+                  <span>Simulation speed:</span>
                   {[0.5, 1, 2].map((s) => (
                     <button 
                       key={s} 
@@ -527,7 +535,7 @@ function QKDExchangeVisualizer({ event, eavesdrop, isPlaying }) {
     <div className="anim-qkd-board">
       <div className="quantum-channel-header">
         <span className="badge alice">Alice (Sender)</span>
-        <span className="channel-line font-teal">Fiber Channel {eavesdrop && <span className="warning-text font-red">Eve Listening</span>}</span>
+        <span className="channel-line font-teal">Fiber Channel {eavesdrop && <span className="warning-text font-red">EVE EAVESDROPPING</span>}</span>
         <span className="badge bob">Bob (Receiver)</span>
       </div>
 
@@ -554,7 +562,7 @@ function QKDExchangeVisualizer({ event, eavesdrop, isPlaying }) {
           
           {eavesdrop && (
             <div className="eve-node animate-pulse">
-              <Eye size={18} className="red" />
+              <Eye size={12} style={{ color: "var(--neon-red)" }} />
               <span>Eve Guesses Basis!</span>
             </div>
           )}
@@ -563,19 +571,19 @@ function QKDExchangeVisualizer({ event, eavesdrop, isPlaying }) {
         {/* Bob Node */}
         <div className="qkd-node-box bob">
           <div className="bit-box">
-            <span>Meas. Basis: <b>{bobBases[photonIndex]}</b></span>
+            <span>Basis: <b>{bobBases[photonIndex]}</b></span>
             <span>Result: <b>{bobBits[photonIndex]}</b></span>
           </div>
           <div className="polarization-circle bob">
             <span className="symbol">{getQubitSymbol(bobBases[photonIndex], parseInt(bobBits[photonIndex]))}</span>
-            <small>Measured Qubit</small>
+            <small>Measured spin</small>
           </div>
         </div>
       </div>
 
       <p className="caption">
         {eavesdrop 
-          ? "Eve intercepts photons and measures them using random bases, collapsing the superposition state and introducing errors prior to Bob's measurement."
+          ? "Eve intercepts photons and measures them using random bases. Measurement collapses superposition, introducing irreversible errors in Bob's results."
           : "Photons are sent with specific polarizations. Bob measures them in random bases. Matching bases produce matching bits; different bases yield random results."
         }
       </p>
@@ -625,8 +633,8 @@ function QKDSiftingVisualizer({ event, eavesdrop }) {
         <div className="sifting-row verdict">
           <span>Bases Match?</span>
           {keep.map((k, i) => (
-            <span key={i} className={k === "Y" ? "match-yes font-green" : "match-no font-red"}>
-              {k === "Y" ? "✅" : "❌"}
+            <span key={i} className={k === "Y" ? "match-yes font-green" : "match-no font-red"} style={{ color: k === "Y" ? "var(--neon-emerald)" : "var(--neon-red)" }}>
+              {k === "Y" ? "✓" : "✗"}
             </span>
           ))}
         </div>
@@ -649,21 +657,21 @@ function QKDSiftingVisualizer({ event, eavesdrop }) {
           <h4>📊 Quantum Bit Error Rate (QBER) Diagnostic Analysis</h4>
           <div className="qber-stats">
             <div className="qber-stat-card">
-              <small>Matching Bases</small>
+              <small>Matching bases</small>
               <strong>{event?.matchingBases || "8"}</strong>
             </div>
             <div className="qber-stat-card warning">
-              <small>Bit Mismatches</small>
-              <strong className="red">
+              <small>Bit mismatches</small>
+              <strong className="red" style={{ color: "var(--neon-red)" }}>
                 {Math.max(1, Math.round((event?.errorRate || 0.25) * (event?.matchingBases || 8)))}
               </strong>
             </div>
             <div className="qber-stat-card warning">
-              <small>Calculated QBER</small>
-              <strong className="red">{Math.round((event?.errorRate || 0.25) * 100)}%</strong>
+              <small>QBER (error rate)</small>
+              <strong className="red" style={{ color: "var(--neon-red)" }}>{Math.round((event?.errorRate || 0.25) * 100)}%</strong>
             </div>
             <div className="qber-stat-card">
-              <small>Max Limit</small>
+              <small>Detection threshold</small>
               <strong>{Math.round((event?.errorThreshold || 0.15) * 100)}%</strong>
             </div>
           </div>
@@ -674,12 +682,12 @@ function QKDSiftingVisualizer({ event, eavesdrop }) {
       ) : (
         <div className="key-derivation-flow">
           <div className="blender-graphic">
-            <RotateCcw size={28} className="spin-slow" />
+            <RotateCcw size={16} className="spin-slow" style={{ marginRight: "4px" }} />
             <span>SHA-256 Key Derivation Function</span>
           </div>
           <div className="arrow-down">↓</div>
           <div className="derived-aes-key">
-            <Lock size={14} />
+            <Lock size={12} style={{ color: "var(--neon-cyan)", marginRight: "4px" }} />
             <span>Derived AES Key Fingerprint: <strong>{event?.keyFingerprint || "3a7f8b9c"}</strong></span>
           </div>
         </div>
@@ -709,19 +717,19 @@ function AESEncryptVisualizer({ event }) {
         <div className="key-block">
           <span>AES-256 Key</span>
           <div className="block-val key">
-            <code>Fingerprint: {event?.keyFingerprint || "Awaiting Key..."}</code>
+            <code>Hash: {event?.keyFingerprint || "Awaiting Key..."}</code>
           </div>
         </div>
 
-        <div className="arrow-flow">→</div>
+        <div className="arrow-flow">➔</div>
 
         <div className="crypto-engine">
-          <Lock size={20} className="pulse" />
+          <Lock size={16} className="pulse" />
           <span>AES-256-CBC</span>
           <small>PKCS7 Padding</small>
         </div>
 
-        <div className="arrow-flow">→</div>
+        <div className="arrow-flow">➔</div>
 
         <div className="output-envelope">
           <span>Encrypted Packet Envelope</span>
@@ -760,7 +768,7 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
             </div>
             <div>
               <small>Ciphertext</small>
-              <code>{event?.ciphertextPreview ? `${event.ciphertextPreview}...` : "Awaiting Ciphertext..."}</code>
+              <code>{event?.ciphertextPreview ? `${event.ciphertextPreview}...` : "Awaiting Cipher..."}</code>
             </div>
             <div>
               <small>HMAC Tag</small>
@@ -769,15 +777,15 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
           </div>
         </div>
 
-        <div className="arrow-flow">→</div>
+        <div className="arrow-flow">➔</div>
 
         <div className={`crypto-engine decrypt ${isSuccess ? "success" : "fail"}`}>
-          {isSuccess ? <Unlock size={20} className="success-pulse" /> : <ShieldAlert size={20} className="red-pulse" />}
+          {isSuccess ? <Unlock size={16} className="pulse" /> : <ShieldAlert size={16} className="flash" />}
           <span>HMAC Integrity Check</span>
-          <small>{isSuccess ? "VALID SIGNATURE" : "INTEGRITY TAMPERED!"}</small>
+          <small>{isSuccess ? "VERIFIED VALID" : "SIGNATURE MISMATCH!"}</small>
         </div>
 
-        <div className="arrow-flow">→</div>
+        <div className="arrow-flow">➔</div>
 
         {isSuccess ? (
           <div className="input-block success">
@@ -790,15 +798,15 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
           <div className="input-block fail">
             <span>Decryption Failure</span>
             <div className="block-val text red" style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "stretch", padding: "8px 12px" }}>
-              <code className="red" style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", marginBottom: "4px" }}>ERROR: BAD HMAC SIGNATURE</code>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "10px", opacity: 0.95 }}>
+              <code className="red" style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", marginBottom: "4px", color: "var(--neon-red)" }}>ERROR: BAD HMAC SIGNATURE</code>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "10px", opacity: 0.95, textAlign: "left" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
-                  <span style={{ color: "#475569" }}>Envelope Tag:</span>
-                  <code style={{ color: "#1e293b" }}>{event?.tagPreview ? event.tagPreview.slice(0, 12) + "..." : "none"}</code>
+                  <span style={{ color: "#8c9ba5" }}>Envelope Tag:</span>
+                  <code style={{ color: "#ffffff" }}>{event?.tagPreview ? event.tagPreview.slice(0, 12) + "..." : "none"}</code>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
-                  <span style={{ color: "#475569" }}>Recalculated:</span>
-                  <code style={{ color: "#ef4444" }}>
+                  <span style={{ color: "#8c9ba5" }}>Recalculated:</span>
+                  <code style={{ color: "var(--neon-red)" }}>
                     {event?.recalculatedTag 
                       ? event.recalculatedTag.slice(0, 12) + "..." 
                       : (event?.tagPreview && event.tagPreview.length >= 8 
@@ -813,14 +821,14 @@ function AESDecryptVisualizer({ event, node, isSuccess }) {
         )}
       </div>
 
-      <div className="explanation-bubble">
+      <div className="explanation-bubble" style={{ marginTop: "16px", padding: "12px 16px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
         {isSuccess ? (
-          <p>
-            The HMAC signature verified successfully. {node} decrypted the ciphertext back to plaintext.
+          <p className="caption" style={{ color: "var(--neon-emerald)" }}>
+            The HMAC signature verified successfully. {node} decrypted the ciphertext back to plaintext using the derived link key.
           </p>
         ) : (
-          <p className="red">
-            <strong>TAMPERING DETECTED:</strong> The recalculated HMAC over IV + Ciphertext did not match the envelope's tag.
+          <p className="caption red" style={{ color: "var(--neon-red)" }}>
+            <strong>TAMPERING DETECTED:</strong> Recalculated HMAC over IV + Ciphertext did not match the envelope's tag.
             The node blocked and dropped the packet to prevent ciphertext manipulation (MITM) attacks.
           </p>
         )}

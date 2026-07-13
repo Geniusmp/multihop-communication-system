@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -11,6 +11,7 @@ import {
   Zap,
   Send as SendIcon,
   ArrowDownToLine,
+  ShieldCheck,
 } from "lucide-react";
 
 const phaseConfig = {
@@ -39,23 +40,23 @@ function previewCells(value = "") {
 function BB84MiniTable({ event }) {
   if (!event.aliceBitPreview) return null;
   const rows = [
-    ["Alice bit", previewCells(event.aliceBitPreview)],
-    ["Bob bit", previewCells(event.bobBitPreview)],
-    ["Alice basis", previewCells(event.aliceBasisPreview)],
-    ["Bob basis", previewCells(event.bobBasisPreview)],
-    ["Keep", previewCells(event.keepPreview)],
+    ["Alice Bits", previewCells(event.aliceBitPreview)],
+    ["Bob Bits", previewCells(event.bobBitPreview)],
+    ["Alice Bases", previewCells(event.aliceBasisPreview)],
+    ["Bob Bases", previewCells(event.bobBasisPreview)],
+    ["Keep Bits", previewCells(event.keepPreview)],
   ];
 
   return (
     <div className="bb84Table" aria-label="BB84 basis table">
-      <p>QKD sifted key: matching bases are kept</p>
+      <p>Sifted Key Generation (bases match comparison):</p>
       {rows.map(([label, cells]) => (
         <div className="bb84Row" key={label}>
           <span>{label}</span>
           <div>
             {cells.map((cell, index) => (
               <b
-                className={`${label === "Keep" && cell === "Y" ? "kept" : ""} ${label === "Keep" && cell === "N" ? "dropped" : ""}`}
+                className={`${label === "Keep Bits" && cell === "Y" ? "kept" : ""} ${label === "Keep Bits" && cell === "N" ? "dropped" : ""}`}
                 key={`${label}-${index}`}
               >
                 {cell}
@@ -74,43 +75,43 @@ function stepSummary(event) {
   if (event.phase === "bb84") {
     const errPct = Math.round((event.errorRate || 0) * 100);
     const thrPct = Math.round((event.errorThreshold || 0.15) * 100);
-    summaryLines.push(`${event.matchingBases || "?"} bases matched -> ${event.siftedBits || "?"} bits sifted`);
-    summaryLines.push(`Error rate: ${errPct}% (limit: ${thrPct}%)`);
+    summaryLines.push(`${event.matchingBases || "?"} matched bases sifting into ${event.siftedBits || "?"} bits.`);
+    summaryLines.push(`Calculated QBER error: ${errPct}% (threat detection limit: ${thrPct}%)`);
     summaryLines.push(
       event.errorRate > event.errorThreshold
-        ? "Rejected: checked bits disagreed too often, which indicates eavesdropping noise."
-        : "Accepted: checked bits stayed within the safe error limit."
+        ? "ACTION: Line error exceeds 15% threshold. Key negotiation rejected (active listening detected)."
+        : "ACTION: Error rate within normal tolerance. Symmetric key verified successfully."
     );
-    if (event.keyFingerprint) summaryLines.push(`Fresh AES key fingerprint: ${event.keyFingerprint}`);
+    if (event.keyFingerprint) summaryLines.push(`Key Fingerprint derived: ${event.keyFingerprint}`);
     return summaryLines;
   }
 
   if (event.phase === "aes-encrypt" || event.phase === "aes-decrypt") {
     const action = event.phase === "aes-decrypt" ? "Decrypted" : "Encrypted";
-    summaryLines.push(`${action} ${event.plaintextLength || "?"} plaintext characters with AES-256-CBC`);
-    summaryLines.push(`Key fingerprint used for this hop: ${event.keyFingerprint || "unknown"}`);
+    summaryLines.push(`${action} ${event.plaintextLength || "?"} chars plaintext utilizing symmetric AES-256-CBC.`);
+    summaryLines.push(`Key Fingerprint applied: ${event.keyFingerprint || "unknown"}`);
     if (event.previousHop || event.nextHop) {
-      summaryLines.push(`Route step: ${labelNode(event.previousHop)} -> ${labelNode(event.nextHop)}`);
+      summaryLines.push(`Routing Hop: ${labelNode(event.previousHop)} ➔ ${labelNode(event.nextHop)}`);
     }
     if (event.hopExplanation) summaryLines.push(event.hopExplanation);
     return summaryLines;
   }
 
   if (event.phase === "attack-detected") {
-    summaryLines.push(`Detection rule: ${event.detectionReason || event.message}`);
-    if (event.detectionCheckpoint) summaryLines.push(`Checked at: ${event.detectionCheckpoint}`);
-    if (event.attackMode) summaryLines.push(`Selected attack mode: ${event.attackMode}`);
-    if (event.targetNode) summaryLines.push(`Configured attack target: ${labelNode(event.targetNode)}`);
+    summaryLines.push(`Threat Trigger: ${event.detectionReason || event.message}`);
+    if (event.detectionCheckpoint) summaryLines.push(`Verification checkpoint: ${event.detectionCheckpoint}`);
+    if (event.attackMode) summaryLines.push(`Simulated vector: ${event.attackMode}`);
+    if (event.targetNode) summaryLines.push(`Target node: ${labelNode(event.targetNode)}`);
     if (event.integrityTagPresent !== undefined) {
-      summaryLines.push(`AES integrity tag present: ${event.integrityTagPresent ? "yes" : "no"}`);
+      summaryLines.push(`HMAC Signature Present: ${event.integrityTagPresent ? "YES" : "NO"}`);
     }
     if (event.ciphertextTampered !== undefined) {
-      summaryLines.push(`Ciphertext tampered in transit: ${event.ciphertextTampered ? "yes" : "no"}`);
+      summaryLines.push(`Ciphertext Altered: ${event.ciphertextTampered ? "YES (Integrity Check Failed)" : "NO"}`);
     }
     if (event.inspectedAtTarget !== undefined) {
-      summaryLines.push(`This node is the selected target: ${event.inspectedAtTarget ? "yes" : "no"}`);
+      summaryLines.push(`Target Match: ${event.inspectedAtTarget ? "YES" : "NO"}`);
     }
-    if (event.blockedNode) summaryLines.push(`${labelNode(event.blockedNode)} was blocked, so the route stops here.`);
+    if (event.blockedNode) summaryLines.push(`LINK STATUS: ${labelNode(event.blockedNode)} blocked. Packet propagation halted.`);
     return summaryLines;
   }
 
@@ -126,14 +127,14 @@ function StepDetail({ event }) {
     <div className={`journeyStepDetail ${phase.color}`}>
       <div className="journeyStepHeader" onClick={() => setExpanded(!expanded)}>
         <div className="journeyStepIcon">
-          <phase.Icon size={16} />
+          <phase.Icon size={14} />
         </div>
         <div className="journeyStepInfo">
           <span className="journeyStepLabel">{phase.label}</span>
           <p className="journeyStepMessage">{event.message}</p>
         </div>
-        <button type="button" className="expandToggle" aria-label={expanded ? "Collapse" : "Expand"}>
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <button type="button" className="expandToggle" aria-label={expanded ? "Collapse Details" : "Expand Details"}>
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
 
@@ -150,20 +151,20 @@ function StepDetail({ event }) {
           {event.phase === "bb84" && <BB84MiniTable event={event} />}
           {(event.ivPreview || event.ciphertextPreview || event.tagPreview || event.decryptedPreview) && (
             <div className="technicalDetails">
-              {event.ivPreview && <code>IV: {event.ivPreview}...</code>}
-              {event.ciphertextPreview && <code>Cipher: {event.ciphertextPreview}...</code>}
-              {event.tagPreview && <code>HMAC tag: {event.tagPreview}...</code>}
-              {event.decryptedPreview && <code>Plaintext preview: {event.decryptedPreview}</code>}
+              {event.ivPreview && <code>IV Vector: {event.ivPreview}...</code>}
+              {event.ciphertextPreview && <code>Ciphertext: {event.ciphertextPreview}...</code>}
+              {event.tagPreview && <code>HMAC Checksum: {event.tagPreview}...</code>}
+              {event.decryptedPreview && <code>Decrypted Plaintext: {event.decryptedPreview}</code>}
             </div>
           )}
           {event.noncePreview && (
             <div className="technicalDetails">
-              <code>Nonce: {event.noncePreview}...</code>
+              <code>Slide Nonce: {event.noncePreview}...</code>
             </div>
           )}
           {event.detectionEvidence?.length > 0 && (
             <div className="evidenceList">
-              <strong>How the MITM was caught</strong>
+              <strong>TAMPERING DIAGNOSTIC FORENSICS:</strong>
               <ol>
                 {event.detectionEvidence.map((line, index) => (
                   <li key={`${line}-${index}`}>{line}</li>
@@ -188,10 +189,10 @@ function OutcomeBanner({ events }) {
   if (isSuccess) {
     return (
       <div className="outcomeBanner success">
-        <CheckCircle2 size={22} />
+        <ShieldCheck size={20} style={{ flexShrink: 0 }} />
         <div>
           <strong>Message Delivered Successfully</strong>
-          <p>Every hop decrypted only its incoming layer, created a fresh BB84-derived AES key, and encrypted for the next hop.</p>
+          <p>The packet traversed the 3-hop virtual route successfully. Hop-by-hop QKD rekeying completed honestly. CBC layers decrypted safely at the receiver node.</p>
         </div>
       </div>
     );
@@ -199,15 +200,15 @@ function OutcomeBanner({ events }) {
 
   if (isBlocked) {
     const attack = attackEvents[0];
-    const reason = attack?.detectionReason || attack?.message || "Attack detected";
+    const reason = attack?.detectionReason || attack?.message || "Threat anomaly detected";
     const blockedAt = attack?.blockedNode || attack?.source || "unknown node";
     const mitmCopy = attack?.ciphertextTampered
-      ? "The ciphertext was changed in transit, and the AES HMAC tag failed before plaintext was released."
-      : "The node failed one of the security checks, so it was blocked before the route continued.";
+      ? "Payload modified in transit. HMAC tag check mismatch caught the alteration and dropped plaintext release."
+      : "Gateway check failed. The node dropped key derivation and blacklisted the threat pathway.";
 
     return (
       <div className="outcomeBanner blocked">
-        <XCircle size={22} />
+        <ShieldAlert size={20} style={{ flexShrink: 0 }} />
         <div>
           <strong>Attack Detected and Blocked at {labelNode(blockedAt)}</strong>
           <p>{reason}. {mitmCopy}</p>
@@ -240,11 +241,14 @@ export default function PacketJourney({ events, onNodeClick, receiverName }) {
     return (
       <section className="panel journeyPanel">
         <div className="panelHeader">
-          <h2>Packet Journey</h2>
+          <div className="panelHeaderLeft">
+            <Zap size={16} className="panelHeaderIcon" />
+            <h2>Packet Journey</h2>
+          </div>
         </div>
         <div className="journeyEmpty">
-          <Zap size={40} />
-          <p>Send a message to see the step-by-step packet journey through the quantum network.</p>
+          <Zap size={28} style={{ color: "var(--neon-cyan)", opacity: 0.5, marginBottom: "8px" }} />
+          <p style={{ fontSize: "12px", color: "#516279" }}>Waiting for packet to start...</p>
         </div>
       </section>
     );
@@ -253,13 +257,16 @@ export default function PacketJourney({ events, onNodeClick, receiverName }) {
   return (
     <section className="panel journeyPanel">
       <div className="panelHeader">
-        <h2>Packet Journey</h2>
+        <div className="panelHeaderLeft">
+          <Zap size={16} className="panelHeaderIcon" />
+          <h2>Packet Journey</h2>
+        </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <span className="infoBadge pulse">
+          <span className="infoBadge">
             💡 Click any node header to view animation
           </span>
-          <span className="stepStatus">
-            {stageEvents.length} steps across {nodeSteps.length} nodes
+          <span className="stepStatus" style={{ fontSize: "11px", fontWeight: "700", color: "var(--neon-cyan)", fontFamily: "var(--font-cyber)" }}>
+            {stageEvents.length} events
           </span>
         </div>
       </div>
@@ -283,19 +290,20 @@ export default function PacketJourney({ events, onNodeClick, receiverName }) {
               <div 
                 className="journeyNodeHeader clickable"
                 onClick={() => onNodeClick && onNodeClick(nodeGroup.node)}
-                title="Click to view interactive QKD & AES animation"
+                title="Launch visual sifting/decryption diagnostics animation"
+                style={{ cursor: "pointer" }}
               >
                 <div className={`journeyNodeDot ${hasAttack ? "red" : "teal"}`}>
-                  <NodeIcon size={16} />
+                  <NodeIcon size={14} />
                 </div>
                 <div className="journeyNodeLine" />
                 <h3>{nodeGroup.name}</h3>
                 {hasAttack && (
                   <span className="journeyAttackTag">
-                    <ShieldAlert size={12} /> Blocked
+                    <ShieldAlert size={10} style={{ marginRight: "3px" }} /> blocked
                   </span>
                 )}
-                <span className="journeyAnimateLink">Animate →</span>
+                <span className="journeyAnimateLink">Animate HUD →</span>
               </div>
               <div className="journeyNodeSteps">
                 {nodeGroup.events.map((event, index) => (

@@ -1,3 +1,4 @@
+import React from "react";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -22,14 +23,18 @@ function AttackBanner({ msg }) {
   if (!msg.attackDetected) return null;
   return (
     <div className="inboxAttackBanner">
-      <AlertTriangle size={14} />
+      <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: "2px" }} />
       <div>
-        <strong>⚠️ Security Alert: {msg.attackType}</strong>
+        <strong>ATTACK DETECTED: {msg.attackType}</strong>
         {msg.relayName && (
-          <p>Relayed through: <code>{msg.relayName} ({msg.relayIp})</code></p>
+          <p style={{ marginTop: "2px", fontSize: "11px", color: "var(--neon-red)" }}>
+            Relayed via: <code>{msg.relayName} ({msg.relayIp})</code>
+          </p>
         )}
         {msg.bb84Details?.errorRate !== undefined && (
-          <p>BB84 error rate: <strong>{Math.round(msg.bb84Details.errorRate * 100)}%</strong> (threshold: {Math.round((msg.bb84Details.errorThreshold || 0.15) * 100)}%)</p>
+          <p style={{ marginTop: "2px", fontSize: "11px", color: "var(--neon-red)" }}>
+            Error Rate: <strong>{Math.round(msg.bb84Details.errorRate * 100)}%</strong> (threshold: {Math.round((msg.bb84Details.errorThreshold || 0.15) * 100)}%)
+          </p>
         )}
       </div>
     </div>
@@ -44,17 +49,17 @@ function BB84Badge({ details }) {
   return (
     <div className={`bb84Badge ${safe ? "safe" : "danger"}`}>
       {safe ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
-      BB84 error {pct}% / {threshold}%
-      &nbsp;·&nbsp;
-      Key: <code>{details.keyFingerprint}…</code>
+      <span>Error rate: {pct}% (threshold: {threshold}%)</span>
+      <span style={{ opacity: 0.3 }}>·</span>
+      <span>Key Fingerprint: <code>{details.keyFingerprint}…</code></span>
     </div>
   );
 }
 
 function stepIcon(status) {
-  if (status === "attack") return <XCircle size={14} />;
-  if (status === "warning") return <CircleAlert size={14} />;
-  return <CheckCircle2 size={14} />;
+  if (status === "attack") return <XCircle size={12} style={{ color: "var(--neon-red)" }} />;
+  if (status === "warning") return <CircleAlert size={12} style={{ color: "var(--neon-amber)" }} />;
+  return <CheckCircle2 size={12} style={{ color: "var(--neon-emerald)" }} />;
 }
 
 function NodeCrypto({ step, crypto }) {
@@ -63,21 +68,24 @@ function NodeCrypto({ step, crypto }) {
   if (nodeCrypto.action) {
     return (
       <div className="nodeCrypto">
+        {nodeCrypto.action && <p><span>Action</span><code>{nodeCrypto.action}</code></p>}
         {nodeCrypto.decryptedPreview && <p><span>Decrypted</span><code>{nodeCrypto.decryptedPreview}</code></p>}
         {nodeCrypto.plaintextPreview && <p><span>Plaintext</span><code>{nodeCrypto.plaintextPreview}</code></p>}
-        {nodeCrypto.aesKeyFingerprint && <p><span>New AES key</span><code>{nodeCrypto.aesKeyFingerprint}... ({nodeCrypto.aesKeyLengthBits} bits)</code></p>}
-        {nodeCrypto.ivPreview && <p><span>New IV</span><code>{nodeCrypto.ivPreview}...</code></p>}
-        {nodeCrypto.ciphertextPreview && <p><span>New ciphertext</span><code>{nodeCrypto.ciphertextPreview}...</code></p>}
-        {nodeCrypto.payload?.ciphertext && <p><span>Incoming ciphertext</span><code>{nodeCrypto.payload.ciphertext.slice(0, 40)}...</code></p>}
-        {bb84.aliceBasisPreview && <p><span>BB84 bases</span><code>Alice {bb84.aliceBasisPreview} | Bob {bb84.bobBasisPreview}</code></p>}
-        {bb84.aliceBitPreview && <p><span>Bits</span><code>Alice {bb84.aliceBitPreview} | Bob {bb84.bobBitPreview}</code></p>}
+        {nodeCrypto.aesKeyFingerprint && <p><span>AES Key Fingerprint</span><code>{nodeCrypto.aesKeyFingerprint}...</code></p>}
+        {nodeCrypto.ivPreview && <p><span>IV</span><code>{nodeCrypto.ivPreview}...</code></p>}
+        {nodeCrypto.ciphertextPreview && <p><span>Ciphertext</span><code>{nodeCrypto.ciphertextPreview}...</code></p>}
+        {nodeCrypto.payload?.ciphertext && <p><span>Payload Ciphertext</span><code>{nodeCrypto.payload.ciphertext.slice(0, 40)}...</code></p>}
+        {bb84.aliceBasisPreview && <p><span>Alice Basis</span><code>{bb84.aliceBasisPreview}</code></p>}
+        {bb84.bobBasisPreview && <p><span>Bob Basis</span><code>{bb84.bobBasisPreview}</code></p>}
+        {bb84.aliceBitPreview && <p><span>Alice Bit</span><code>{bb84.aliceBitPreview}</code></p>}
+        {bb84.bobBitPreview && <p><span>Bob Bit</span><code>{bb84.bobBitPreview}</code></p>}
         {bb84.keepPreview && <p><span>Keep / sifted</span><code>{bb84.keepPreview} / {bb84.siftedPreview}</code></p>}
-        {bb84.matchingBases && <p><span>BB84 counts</span><code>{bb84.matchingBases} matching, {bb84.siftedBits} sifted, {bb84.comparedBits} compared</code></p>}
-        {bb84.errorRate !== undefined && <p><span>Error rate</span><code>{Math.round((bb84.errorRate || 0) * 100)}% / {Math.round((bb84.errorThreshold || 0.15) * 100)}%</code></p>}
+        {bb84.matchingBases && <p><span>BB84 counts</span><code>{bb84.matchingBases} match, {bb84.siftedBits} sifted, {bb84.comparedBits} compared</code></p>}
+        {bb84.errorRate !== undefined && <p><span>Error rate</span><code>{Math.round((bb84.errorRate || 0) * 100)}% (threshold {Math.round((bb84.errorThreshold || 0.15) * 100)}%)</code></p>}
         {nodeCrypto.nonce && <p><span>Nonce</span><code>{nodeCrypto.nonce.slice(0, 24)}...</code></p>}
         {nodeCrypto.mode && <p><span>Mode seen</span><code>{nodeCrypto.mode}</code></p>}
         {nodeCrypto.blockedReason && <p><span>Blocked reason</span><code>{nodeCrypto.blockedReason}</code></p>}
-        {nodeCrypto.note && <p><span>What happened</span><code>{nodeCrypto.note}</code></p>}
+        {nodeCrypto.note && <p><span>Note</span><code>{nodeCrypto.note}</code></p>}
       </div>
     );
   }
@@ -90,12 +98,14 @@ function NodeCrypto({ step, crypto }) {
   if (node.includes("sender")) {
     return (
       <div className="nodeCrypto">
-        <p><span>Plaintext</span><code>{crypto.senderPlaintextPreview || crypto.plaintextPreview || "message typed by sender"}</code></p>
-        <p><span>AES key</span><code>{crypto.aesKeyFingerprint}... ({crypto.aesKeyLengthBits} bits)</code></p>
+        <p><span>Plaintext</span><code>{crypto.senderPlaintextPreview || crypto.plaintextPreview || "gateway text input"}</code></p>
+        <p><span>AES Key Fingerprint</span><code>{crypto.aesKeyFingerprint}...</code></p>
         <p><span>IV</span><code>{crypto.ivPreview}...</code></p>
         <p><span>Ciphertext</span><code>{crypto.ciphertextPreview}...</code></p>
-        <p><span>BB84 bases</span><code>Alice {sender.aliceBasisPreview} | Bob {sender.bobBasisPreview}</code></p>
-        <p><span>Bits</span><code>Alice {sender.aliceBitPreview} | Bob {sender.bobBitPreview}</code></p>
+        <p><span>Alice Basis</span><code>{sender.aliceBasisPreview}</code></p>
+        <p><span>Bob Basis</span><code>{sender.bobBasisPreview}</code></p>
+        <p><span>Alice Bit</span><code>{sender.aliceBitPreview}</code></p>
+        <p><span>Bob Bit</span><code>{sender.bobBitPreview}</code></p>
         <p><span>Keep / sifted</span><code>{sender.keepPreview} / {sender.siftedPreview}</code></p>
       </div>
     );
@@ -104,8 +114,8 @@ function NodeCrypto({ step, crypto }) {
   if (node.includes("hop")) {
     return (
       <div className="nodeCrypto">
-        <p><span>Packet state</span><code>Encrypted only; hop cannot read plaintext</code></p>
-        <p><span>Carrying</span><code>nonce {crypto.nonce.slice(0, 16)}... + ciphertext {crypto.ciphertextPreview}...</code></p>
+        <p><span>Nonce</span><code>{crypto.nonce.slice(0, 16)}...</code></p>
+        <p><span>Ciphertext</span><code>{crypto.ciphertextPreview}...</code></p>
       </div>
     );
   }
@@ -113,7 +123,7 @@ function NodeCrypto({ step, crypto }) {
   if (node.includes("receiver check")) {
     return (
       <div className="nodeCrypto">
-        <p><span>Nonce check</span><code>{crypto.nonce.slice(0, 24)}...</code></p>
+        <p><span>Nonce</span><code>{crypto.nonce.slice(0, 24)}...</code></p>
         <p><span>Mode seen</span><code>{crypto.attackMode || "normal"}</code></p>
       </div>
     );
@@ -122,12 +132,14 @@ function NodeCrypto({ step, crypto }) {
   if (node.includes("receiver")) {
     return (
       <div className="nodeCrypto">
-        <p><span>Receiver BB84 bases</span><code>Alice {receiver.aliceBasisPreview} | Bob {receiver.bobBasisPreview}</code></p>
-        <p><span>Receiver bits</span><code>Alice {receiver.aliceBitPreview} | Bob {receiver.bobBitPreview}</code></p>
+        <p><span>Alice Basis</span><code>{receiver.aliceBasisPreview}</code></p>
+        <p><span>Bob Basis</span><code>{receiver.bobBasisPreview}</code></p>
+        <p><span>Alice Bit</span><code>{receiver.aliceBitPreview}</code></p>
+        <p><span>Bob Bit</span><code>{receiver.bobBitPreview}</code></p>
         <p><span>Keep / sifted</span><code>{receiver.keepPreview} / {receiver.siftedPreview}</code></p>
-        <p><span>BB84 counts</span><code>{receiver.matchingBases} matching, {receiver.siftedBits} sifted, {receiver.comparedBits} compared</code></p>
-        <p><span>Error rate</span><code>{Math.round((receiver.errorRate || 0) * 100)}% / {Math.round((receiver.errorThreshold || 0.15) * 100)}%</code></p>
-        <p><span>Decryption</span><code>{crypto.decrypted ? `Plaintext: ${crypto.plaintextPreview}` : `Blocked: ${crypto.blockedReason}`}</code></p>
+        <p><span>BB84 counts</span><code>{receiver.matchingBases} match, {receiver.siftedBits} sifted, {receiver.comparedBits} compared</code></p>
+        <p><span>Error rate</span><code>{Math.round((receiver.errorRate || 0) * 100)}% (threshold {Math.round((receiver.errorThreshold || 0.15) * 100)}%)</code></p>
+        <p><span>Decrypted</span><code>{crypto.decrypted ? crypto.plaintextPreview : `Blocked: ${crypto.blockedReason}`}</code></p>
       </div>
     );
   }
@@ -142,8 +154,8 @@ function NodeSteps({ msg }) {
   return (
     <details className="nodeSteps">
       <summary>
-        <Route size={14} />
-        <span>Node steps</span>
+        <Route size={13} style={{ marginRight: "4px" }} />
+        <span>What happened</span>
       </summary>
       <ol className="nodeStepList">
         {steps.map((step, index) => (
@@ -152,11 +164,11 @@ function NodeSteps({ msg }) {
             <div className="nodeStepBody">
               <div className="nodeStepTop">
                 <strong>{index + 1}. {step.node}</strong>
-                <span>{step.name}</span>
+                {step.name && <span style={{ color: "#ffffff" }}>({step.name})</span>}
                 {step.ip && <code>{step.ip}</code>}
               </div>
-              <p>{step.title}</p>
-              <small>{step.detail}</small>
+              <p style={{ fontSize: "12px", color: "#ffffff", fontWeight: "600", marginTop: "2px" }}>{step.title}</p>
+              <small style={{ fontSize: "11.5px", color: "#8c9ba5" }}>{step.detail}</small>
               <NodeCrypto step={step} crypto={msg.cryptoDetails} />
             </div>
           </li>
@@ -178,8 +190,13 @@ export default function InboxPanel({ messages, onClear }) {
           )}
         </div>
         {messages.length > 0 && (
-          <button type="button" className="clearBtn" onClick={onClear} title="Clear inbox">
-            <Trash2 size={14} />
+          <button 
+            type="button" 
+            className="clearBtn" 
+            onClick={onClear} 
+            title="Clear"
+          >
+            <Trash2 size={13} style={{ marginRight: "3px" }} />
             Clear
           </button>
         )}
@@ -187,9 +204,11 @@ export default function InboxPanel({ messages, onClear }) {
 
       {messages.length === 0 ? (
         <div className="inboxEmpty">
-          <Zap size={32} />
+          <Zap size={24} style={{ marginBottom: "6px", color: "var(--neon-emerald)", opacity: 0.6 }} />
           <p>No messages received yet.</p>
-          <small>Messages sent from other laptops will appear here in real-time.</small>
+          <small style={{ fontSize: "11px", color: "#516279" }}>
+            Messages sent from other laptops will appear here in real-time.
+          </small>
         </div>
       ) : (
         <div className="inboxList">
@@ -200,17 +219,18 @@ export default function InboxPanel({ messages, onClear }) {
             >
               <div className="inboxMessageHeader">
                 <div className="inboxSender">
-                  {msg.attackDetected
-                    ? <ShieldAlert size={14} className="dangerIcon" />
-                    : <ShieldCheck size={14} className="safeIcon" />
-                  }
-                  <User size={13} />
+                  {msg.attackDetected ? (
+                    <ShieldAlert size={14} style={{ color: "var(--neon-red)" }} />
+                  ) : (
+                    <ShieldCheck size={14} style={{ color: "var(--neon-emerald)" }} />
+                  )}
+                  <User size={12} style={{ color: "#8c9ba5" }} />
                   <strong>{msg.senderName}</strong>
                   <code className="senderIp">{msg.senderIp}</code>
                 </div>
                 <div className="inboxTime">
                   <Clock size={11} />
-                  {formatTime(msg.receivedAtISO)}
+                  <span>{formatTime(msg.receivedAtISO)}</span>
                 </div>
               </div>
 
@@ -218,8 +238,8 @@ export default function InboxPanel({ messages, onClear }) {
 
               <div className={`inboxText ${msg.attackDetected ? "blocked" : ""}`}>
                 {msg.attackDetected
-                  ? "🚫 Message blocked — attack detected"
-                  : `💬 ${msg.plaintext}`
+                  ? "[ATTACK DETECTED - MESSAGE BLOCKED]"
+                  : `Plaintext: ${msg.plaintext}`
                 }
               </div>
 

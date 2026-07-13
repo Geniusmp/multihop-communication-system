@@ -567,205 +567,230 @@ export default function App() {
   const pathText = `Path: You -> Hop 1 -> Hop 2 -> Hop 3 -> ${targetPeer?.name || "receiver"}`;
 
   return (
-    <main className="shell">
-      {/* ─── Top Bar ─── */}
-      <section className="topbar">
-        <div>
-          <p className="eyebrow">BB84 Quantum Key Distribution</p>
-          <h1>QuantumHop Secure Network</h1>
+    <div className="dashboard-container">
+      {/* ─── Persistent Sidebar ─── */}
+      <aside className="sidebar">
+        <div className="brand-section">
+          <div className="brand-title">QuantumHop</div>
+          <div className="brand-subtitle">BB84 Quantum Key Distribution</div>
         </div>
-        <div className="topbarRight">
-          {selfInfo && (
-            <div className="selfBadge">
-              <Monitor size={14} />
-              <span>{selfInfo.name}</span>
-              <code>{selfInfo.ip}</code>
-            </div>
-          )}
-          <button className="iconButton" type="button" onClick={handleReset} aria-label="Reset demo">
-            <RotateCcw size={18} />
+
+        {selfInfo && (
+          <div className="selfBadge" title="Local node details">
+            <Monitor size={14} style={{ marginRight: "4px" }} />
+            <span>{selfInfo.name}</span>
+            <code>{selfInfo.ip}</code>
+          </div>
+        )}
+
+        <nav className="tabBar" aria-label="Main Navigation">
+          <button
+            type="button"
+            className={`tab ${activeTab === "network" ? "active" : ""}`}
+            onClick={() => setActiveTab("network")}
+          >
+            <Wifi size={16} />
+            <span>Real Network</span>
+            {peers.length > 0 && <span className="tabBadge">{peers.length}</span>}
+          </button>
+          <button
+            type="button"
+            className={`tab ${activeTab === "simulation" ? "active" : ""}`}
+            onClick={() => setActiveTab("simulation")}
+          >
+            <Radio size={16} />
+            <span>Local Simulation</span>
+          </button>
+        </nav>
+
+        <div style={{ marginTop: "auto", display: "flex", flexDirection: "column" }}>
+          <button 
+            className="iconButton" 
+            style={{ width: "100%", height: "42px", borderRadius: "8px", display: "flex", gap: "8px" }} 
+            type="button" 
+            onClick={handleReset} 
+            disabled={busy}
+            title="Reset demo"
+          >
+            <RotateCcw size={16} className={busy ? "spin" : ""} />
+            <span>Reset demo</span>
           </button>
         </div>
-      </section>
+      </aside>
 
-      {/* ─── Tabs ─── */}
-      <div className="tabBar">
-        <button
-          className={`tab ${activeTab === "network" ? "active" : ""}`}
-          onClick={() => setActiveTab("network")}
-        >
-          <Wifi size={15} />
-          Real Network
-          {peers.length > 0 && <span className="tabBadge">{peers.length}</span>}
-        </button>
-        <button
-          className={`tab ${activeTab === "simulation" ? "active" : ""}`}
-          onClick={() => setActiveTab("simulation")}
-        >
-          <Radio size={15} />
-          Local Simulation
-        </button>
-      </div>
+      {/* ─── Main Console Content Workspace ─── */}
+      <main className="console-main">
+        {/* ─── Top Header Bar ─── */}
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">BB84 Quantum Key Distribution</p>
+            <h1>QuantumHop Secure Network</h1>
+          </div>
+        </header>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* REAL NETWORK TAB                                                   */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {activeTab === "network" && (
-        <>
-          {/* ─── Send Panel ─── */}
-          <section className="panel sendPanel">
-            <div className="panelHeader">
-              <h2>Send Secure Message</h2>
-              {attackMode !== "normal" && (
-                <span className="attackBadge">
-                  <ShieldAlert size={14} />
-                  {activeAttack.label}
-                </span>
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* REAL NETWORK TAB                                                   */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "network" && (
+          <>
+            {/* ─── Send Panel ─── */}
+            <section className="panel sendPanel">
+              <div className="panelHeader">
+                <h2>Send Secure Message</h2>
+                {attackMode !== "normal" && (
+                  <span className="attackBadge">
+                    <ShieldAlert size={14} />
+                    {activeAttack.label}
+                  </span>
+                )}
+              </div>
+
+              <form className="sendForm" onSubmit={handleSend}>
+                <div className="sendRow2">
+                  <input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type a message to send securely…"
+                    aria-label="Message"
+                    className="sendInput"
+                  />
+                </div>
+
+                <div className="sendOptions">
+                  <div className="sendOption">
+                    <label>To:</label>
+                    <select value={targetIp} onChange={(e) => setTargetIp(e.target.value)}>
+                      {peers.length === 0 && <option value="">No peers online</option>}
+                      {peers.map((p) => (
+                        <option key={p.ip} value={p.ip}>
+                          {p.name} ({p.ip})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sendOption">
+                    <label>Mode:</label>
+                    <select value={attackMode} onChange={(e) => setAttackMode(e.target.value)}>
+                      {attackModes.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button type="submit" className="sendBtn" disabled={busy || !targetIp || !message.trim()}>
+                    <Send size={16} style={{ marginRight: "4px" }} />
+                    {busy ? "Sending…" : "Send Securely"}
+                  </button>
+                </div>
+
+                <div className={`attackDesc ${attackMode !== "normal" ? "warning" : ""}`}>
+                  <activeAttack.Icon size={14} />
+                  <p><strong>{pathText}</strong> {activeAttack.desc}</p>
+                </div>
+              </form>
+
+              {sendResult && (
+                <>
+                  <div className={`sendResult ${getReceiverResult(sendResult)?.attackDetected || !sendResult.ok ? "error" : "success"}`}>
+                    {sendResult.ok
+                      ? getReceiverResult(sendResult)?.attackDetected
+                        ? "Message reached receiver, but attack detection blocked it."
+                        : "Message delivered through 3 hops."
+                      : `${sendResult.error || "Send failed"}`
+                    }
+                  </div>
+                  <SendExplanation sendResult={sendResult} />
+                </>
               )}
+            </section>
+
+            <HopFlow 
+              statuses={netStatuses} 
+              attackMode={netAttackMode} 
+              targetNode={netTargetNode} 
+              onNodeClick={handleNodeClick}
+              receiverName={targetPeer?.name}
+            />
+
+            {/* ─── Network Grid ─── */}
+            <div className="networkGrid">
+              <PeerList selfInfo={selfInfo} peers={peers} onRefresh={refreshAll} />
+              <InboxPanel messages={inboxMessages} onClear={async () => { await clearInbox(); await refreshAll(); }} />
             </div>
 
-            <form className="sendForm" onSubmit={handleSend}>
-              <div className="sendRow2">
-                <input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message to send securely…"
-                  aria-label="Message"
-                  className="sendInput"
-                />
-              </div>
+            <PacketJourney 
+              events={netEvents} 
+              onNodeClick={handleNodeClick}
+              receiverName={targetPeer?.name}
+            />
 
-              <div className="sendOptions">
-                <div className="sendOption">
-                  <label>To:</label>
-                  <select value={targetIp} onChange={(e) => setTargetIp(e.target.value)}>
-                    {peers.length === 0 && <option value="">No peers online</option>}
-                    {peers.map((p) => (
-                      <option key={p.ip} value={p.ip}>
-                        {p.name} ({p.ip})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {/* ─── Metrics + Log ─── */}
+            <div className="split">
+              <section>
+                <ErrorRateBar value={metrics.latestErrorRate} />
+              </section>
+              <LiveLog events={events} />
+            </div>
+          </>
+        )}
 
-                <div className="sendOption">
-                  <label>Mode:</label>
-                  <select value={attackMode} onChange={(e) => setAttackMode(e.target.value)}>
-                    {attackModes.map((m) => (
-                      <option key={m.id} value={m.id}>{m.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button type="submit" className="sendBtn" disabled={busy || !targetIp || !message.trim()}>
-                  <Send size={16} />
-                  {busy ? "Sending…" : "Send Securely"}
-                </button>
-              </div>
-
-              <div className={`attackDesc ${attackMode !== "normal" ? "warning" : ""}`}>
-                <activeAttack.Icon size={14} />
-                <p><strong>{pathText}</strong> {activeAttack.desc}</p>
-              </div>
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* LOCAL SIMULATION TAB                                               */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "simulation" && (
+          <>
+            <form className="sendRow" onSubmit={async (e) => {
+              e.preventDefault();
+              if (!message.trim()) return;
+              setBusy(true);
+              const { sendMessage } = await import("./api/client.js");
+              await sendMessage(message.trim());
+              await refreshAll();
+              setBusy(false);
+            }}>
+              <input
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Type a message to send through local simulation…"
+                aria-label="Message"
+                className="sendInput"
+              />
+              <button type="submit" className="sendBtn" disabled={busy || !message.trim()}>
+                <Send size={18} style={{ marginRight: "4px" }} />
+                {busy ? "Sending…" : "Send Securely"}
+              </button>
             </form>
 
-            {sendResult && (
-              <>
-                <div className={`sendResult ${getReceiverResult(sendResult)?.attackDetected || !sendResult.ok ? "error" : "success"}`}>
-                  {sendResult.ok
-                    ? getReceiverResult(sendResult)?.attackDetected
-                      ? "Message reached receiver, but attack detection blocked it."
-                      : "Message delivered through 3 hops."
-                    : `${sendResult.error || "Send failed"}`
-                  }
-                </div>
-                <SendExplanation sendResult={sendResult} />
-              </>
-            )}
-          </section>
-
-          <HopFlow 
-            statuses={netStatuses} 
-            attackMode={netAttackMode} 
-            targetNode={netTargetNode} 
-            onNodeClick={handleNodeClick}
-            receiverName={targetPeer?.name}
-          />
-
-          {/* ─── Network Grid ─── */}
-          <div className="networkGrid">
-            <PeerList selfInfo={selfInfo} peers={peers} onRefresh={refreshAll} />
-            <InboxPanel messages={inboxMessages} onClear={async () => { await clearInbox(); await refreshAll(); }} />
-          </div>
-
-          <PacketJourney 
-            events={netEvents} 
-            onNodeClick={handleNodeClick}
-            receiverName={targetPeer?.name}
-          />
-
-          {/* ─── Metrics + Log ─── */}
-          <div className="split">
-            <section>
-              <ErrorRateBar value={metrics.latestErrorRate} />
-            </section>
-            <LiveLog events={events} />
-          </div>
-        </>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* LOCAL SIMULATION TAB                                               */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {activeTab === "simulation" && (
-        <>
-          <form className="sendRow" onSubmit={async (e) => {
-            e.preventDefault();
-            if (!message.trim()) return;
-            setBusy(true);
-            const { sendMessage } = await import("./api/client.js");
-            await sendMessage(message.trim());
-            await refreshAll();
-            setBusy(false);
-          }}>
-            <input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type a message to send through local simulation…"
-              aria-label="Message"
+            <MetricCards metrics={metrics} statuses={statuses} attackMode={simAttackMode} />
+            
+            <HopFlow 
+              statuses={statuses} 
+              attackMode={simAttackMode} 
+              targetNode={targetNode} 
+              onNodeClick={handleNodeClick}
             />
-            <button type="submit" disabled={busy}>
-              <Send size={18} />
-              {busy ? "Sending…" : "Send Securely"}
-            </button>
-          </form>
 
-          <MetricCards metrics={metrics} statuses={statuses} attackMode={simAttackMode} />
-          <HopFlow 
-            statuses={statuses} 
-            attackMode={simAttackMode} 
-            targetNode={targetNode} 
-            onNodeClick={handleNodeClick}
-          />
+            <div className="split">
+              <section>
+                <ErrorRateBar value={metrics.latestErrorRate} />
+                <AttackControls
+                  currentMode={simAttackMode}
+                  targetNode={targetNode}
+                  onChange={refreshAll}
+                />
+              </section>
+              <LiveLog events={events} />
+            </div>
+            <PacketJourney 
+              events={events} 
+              attackMode={simAttackMode} 
+              onNodeClick={handleNodeClick}
+            />
+          </>
+        )}
+      </main>
 
-          <div className="split">
-            <section>
-              <ErrorRateBar value={metrics.latestErrorRate} />
-              <AttackControls
-                currentMode={simAttackMode}
-                targetNode={targetNode}
-                onChange={refreshAll}
-              />
-            </section>
-            <LiveLog events={events} />
-          </div>
-          <PacketJourney 
-            events={events} 
-            attackMode={simAttackMode} 
-            onNodeClick={handleNodeClick}
-          />
-        </>
-      )}
       {showAnimationModal && activeAnimationNode && (
         <QuantumAnimationModal
           node={activeAnimationNode}
@@ -775,6 +800,6 @@ export default function App() {
           onClose={() => setShowAnimationModal(false)}
         />
       )}
-    </main>
+    </div>
   );
 }
